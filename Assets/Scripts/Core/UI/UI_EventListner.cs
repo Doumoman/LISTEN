@@ -42,7 +42,6 @@ public class UI_EventListener : MonoBehaviour
         }
         else
         {
-            SingletonManagers.UI.ShowPopupUI<UI_Popup_Menu>("UI_Popup_Menu");
             SingletonManagers.Input.SetInputModeUI(true);
             StartCoroutine(IgnoreInputForMoment()); // 한 프레임동안 남아있는 입력 방지
         }

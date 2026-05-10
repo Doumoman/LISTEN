@@ -11,9 +11,6 @@ public class DataManager : IManager
     // 인게임에서 실시간으로 읽고 쓸 데이터 원본
     public GameData CurrentData { get; private set; }
 
-    // 검색 속도를 위해 List를 Dictionary로 미리 캐싱
-    private Dictionary<int, ChapterState> _chapterStateDict = new Dictionary<int, ChapterState>();
-
     public void Init()
     {
         if (_init) return;
@@ -58,45 +55,15 @@ public class DataManager : IManager
             CreateNewGameData();
             Debug.Log("[DataManager] 세이브 파일이 없습니다. 새 게임 데이터를 생성했습니다.");
         }
-
-        // 동적 챕터 상태 List -> Dictionary
-        _chapterStateDict.Clear();
-        foreach(var chapter in CurrentData.chapterStates)
-        {
-            if (!_chapterStateDict.ContainsKey(chapter.chapterID))
-            {
-                _chapterStateDict.Add(chapter.chapterID, chapter);
-            }
-
-        }
     }
 
     public void CreateNewGameData()
     {
         CurrentData = new GameData();
-        _chapterStateDict.Clear();
         SaveGame();
 
         Debug.Log("[DataManager] 새 게임 데이터 초기화 완료!");
     }
-
-    #region 데이터 헬퍼 함수 (Events & World State)
-
-    /// <summary>
-    /// 특정 챕터의 동적 데이터를 가져옵니다.
-    /// </summary>
-    public ChapterState GetOrCreateChapterState(int chapterId)
-    {
-        if (!_chapterStateDict.TryGetValue(chapterId, out ChapterState state))
-        {
-            state = new ChapterState(chapterId);
-            _chapterStateDict.Add(chapterId, state);
-            Debug.Log($"[DataManager] 챕터 {chapterId}의 새로운 세이브 데이터를 생성합니다.");
-        }
-        return state;
-    }
-
-    #endregion
 
     public void Clear()
     {

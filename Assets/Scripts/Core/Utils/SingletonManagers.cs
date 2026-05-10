@@ -12,20 +12,14 @@ public class SingletonManagers : Singleton<SingletonManagers>
 
     #region Contents
     // 게임 로직 관련
-    private MapManager _map = new MapManager();
-    private DialogueManager _dialogue = new DialogueManager();
     private StoryManager _story = new StoryManager();
-    private BattleManager _battle = new BattleManager();
     #endregion
 
     public static ResourceManager Resource { get { return Instance?._resource; } }
     public static UIManager UI { get { return Instance?._ui; } }
     public static InputManager Input { get { return Instance?._input; } }
     public static DataManager Data { get { return Instance?._data; } }
-    public static MapManager Map { get { return Instance?._map; } }
-    public static DialogueManager Dialogue { get { return Instance?._dialogue; } }
     public static StoryManager Story { get { return Instance?._story; } }
-    public static BattleManager Battle { get { return Instance? ._battle; } }
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
     private static void InitializeBeforeSceneLoad()
@@ -55,10 +49,7 @@ public class SingletonManagers : Singleton<SingletonManagers>
         _resource.Init();
         _input.Init();
         _ui.Init();
-        _map.Init();
-        _dialogue.Init();
         _story.Init();
-        _battle.Init();
 
         // UI 이벤트 리스너가 사라지면 
         if (gameObject.GetComponent<UI_EventListener>() == null)
@@ -78,18 +69,12 @@ public class SingletonManagers : Singleton<SingletonManagers>
         inst._resource?.Clear();
         inst._input?.Clear();
         inst._ui?.Clear();
-        inst._map?.Clear();
-        inst._dialogue?.Clear();
         inst._story?.Clear();
-        inst._battle?.Clear();
     }
 
     protected override void OnDestroy() 
     {
-        if (_battle != null) _battle.OnDestroy();
-        if (_dialogue != null) _dialogue.OnDestroy();
         if (_story != null) _story.OnDestroy();
-        if (_map != null) _map.OnDestroy();
         if (_ui != null) _ui.OnDestroy();
         if (_input != null) _input.OnDestroy();
         if (_resource != null) _resource.OnDestroy();
