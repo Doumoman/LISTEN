@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEditor;
 
 [CustomEditor(typeof(TileMapData))]
@@ -160,15 +160,44 @@ public class TileMapEditor : Editor
 
     // ── Collider management ───────────────────────────────────
 
+    private Transform GetOrCreateLayerParent(TileMapData map, TileType type, bool useUndo = true)
+    {
+        string parentName = type.ToString();
+        Transform existing = map.transform.Find(parentName);
+        if (existing != null) return existing;
+
+        var parentGO = new GameObject(parentName);
+        if (useUndo)
+            Undo.RegisterCreatedObjectUndo(parentGO, "Create Layer Parent");
+        parentGO.transform.SetParent(map.transform, false);
+
+        int layer = LayerMask.NameToLayer(TileMapData.LayerNames[type]);
+        if (layer >= 0) parentGO.layer = layer;
+
+        if (type == TileType.Ground)
+        {
+            var rb = parentGO.AddComponent<Rigidbody2D>();
+            rb.bodyType = RigidbodyType2D.Static;
+            parentGO.AddComponent<CompositeCollider2D>();
+        }
+
+        return parentGO.transform;
+    }
+
     private void UpdateCollider(TileMapData map, Vector2Int pos, TileType type)
     {
         RemoveCollider(map, pos);
 
+        Transform layerParent = GetOrCreateLayerParent(map, type);
+
         var go = new GameObject(ColliderName(pos));
         Undo.RegisterCreatedObjectUndo(go, "Create Tile Collider");
-        go.transform.SetParent(map.transform);
+        go.transform.SetParent(layerParent);
         go.transform.position = map.GridToWorld(pos);
-        go.AddComponent<BoxCollider2D>();
+
+        var box = go.AddComponent<BoxCollider2D>();
+        if (type == TileType.Ground)
+            box.compositeOperation = Collider2D.CompositeOperation.Merge;
 
         int layer = LayerMask.NameToLayer(TileMapData.LayerNames[type]);
         if (layer >= 0) go.layer = layer;
@@ -176,9 +205,22 @@ public class TileMapEditor : Editor
 
     private void RemoveCollider(TileMapData map, Vector2Int pos)
     {
-        Transform t = map.transform.Find(ColliderName(pos));
-        if (t != null)
-            Undo.DestroyObjectImmediate(t.gameObject);
+        string name = ColliderName(pos);
+        foreach (TileType type in System.Enum.GetValues(typeof(TileType)))
+        {
+            Transform layerParent = map.transform.Find(type.ToString());
+            if (layerParent == null) continue;
+            Transform found = layerParent.Find(name);
+            if (found != null)
+            {
+                Undo.DestroyObjectImmediate(found.gameObject);
+                return;
+            }
+        }
+        // 레거시: 레이어 부모 없이 직접 붙어있던 콜라이더 처리
+        Transform legacy = map.transform.Find(name);
+        if (legacy != null)
+            Undo.DestroyObjectImmediate(legacy.gameObject);
     }
 
     private void RebuildColliders(TileMapData map)
@@ -186,12 +228,20 @@ public class TileMapEditor : Editor
         for (int i = map.transform.childCount - 1; i >= 0; i--)
             DestroyImmediate(map.transform.GetChild(i).gameObject);
 
+        foreach (TileType type in System.Enum.GetValues(typeof(TileType)))
+            GetOrCreateLayerParent(map, type, useUndo: false);
+
         foreach (var tile in map.Tiles)
         {
+            Transform layerParent = map.transform.Find(tile.type.ToString());
             var go = new GameObject(ColliderName(tile.gridPos));
-            go.transform.SetParent(map.transform);
+            go.transform.SetParent(layerParent);
             go.transform.position = map.GridToWorld(tile.gridPos);
-            go.AddComponent<BoxCollider2D>();
+
+            var box = go.AddComponent<BoxCollider2D>();
+            if (tile.type == TileType.Ground)
+                box.compositeOperation = Collider2D.CompositeOperation.Merge;
+
             int layer = LayerMask.NameToLayer(TileMapData.LayerNames[tile.type]);
             if (layer >= 0) go.layer = layer;
         }
