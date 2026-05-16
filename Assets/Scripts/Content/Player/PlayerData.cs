@@ -37,7 +37,15 @@ public class PlayerData
     public bool isNearHanger; // 행거 감지
     public bool isHolding; // 물체를 들고 있는지
     public bool isDead; // 플레이어 사망 여부
-                        
+
+    [Header("기본 콜라이더")]
+    public Vector2 standingColliderSize = new Vector2(1.13f, 1.25f);
+    public Vector2 standingColliderOffset = new Vector2(0f, 0f);
+
+    [Header("웅크리기 콜라이더")]
+    public Vector2 sneakColliderSize = new Vector2(1.13f, 1.25f);
+    public Vector2 sneakColliderOffset = new Vector2(0f, 0.2f);
+
     [Header("런타임 콜라이더")]
     public Collider2D nearLadderCollider; // 감지된 Ladder 콜라이더
     public Collider2D nearHangerCollider; // 감지된 Hanger 콜라이더
