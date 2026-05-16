@@ -21,8 +21,8 @@ public class PlayerData
     public LayerMask solidLayer; // 밟을 수 있는 모든 레이어 (Ground, Pushable, ... )
     public LayerMask groundLayer;
     public LayerMask ladderLayer;
-    public LayerMask hangerLayer;
     public LayerMask pushableLayer;
+    public float hangYRange = 0.3f; // 매달리기 허용 Y 거리
 
     [Header("런타임 플래그")]
     public Vector2 moveHorizontalInput; // 입력받은 좌우 이동 방향

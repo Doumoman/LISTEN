@@ -225,17 +225,17 @@ public class PlayerFSM : MonoBehaviour
     {
         float dir = lastDir.x;
         float rayLength = SkinWidth + 0.05f;
-        float halfH = Bc.size.y * 0.5f - SkinWidth;
         Vector2 center = (Vector2)transform.position + Bc.offset;
+        Vector2 origin = center + Vector2.right * (dir * (Bc.size.x * 0.5f - SkinWidth));
 
-        for (int i = 0; i < RayCount; i++)
+        RaycastHit2D hit = Physics2D.Raycast(origin, Vector2.right * dir, rayLength, _playerData.groundLayer);
+        if (hit.collider != null)
         {
-            float t = (RayCount == 1) ? 0.5f : (float)i / (RayCount - 1);
-            Vector2 origin = center + Vector2.up * Mathf.Lerp(-halfH, halfH, t);
-            origin.x += dir * (Bc.size.x * 0.5f - SkinWidth);
+            float tileCenterX = hit.point.x + dir * 0.5f;
+            float tileTopY    = Mathf.Ceil(hit.point.y + 0.01f);
+            Vector2 aboveCenter = new Vector2(tileCenterX, tileTopY + 0.5f);
 
-            RaycastHit2D hit = Physics2D.Raycast(origin, Vector2.right * dir, rayLength, _playerData.hangerLayer);
-            if (hit.collider != null)
+            if (Physics2D.OverlapCircle(aboveCenter, 0.4f, _playerData.solidLayer) == null)
             {
                 _playerData.nearHangerCollider = hit.collider;
                 _playerData.isNearHanger = true;

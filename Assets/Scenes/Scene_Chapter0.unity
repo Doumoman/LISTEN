@@ -230,7 +230,7 @@ MonoBehaviour:
   groundCheckInset: 0.1
   solidLayer:
     serializedVersion: 2
-    m_Bits: 1152
+    m_Bits: 128
 --- !u!61 &4814455
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -1264,7 +1264,7 @@ BoxCollider2D:
     drawMode: 0
     adaptiveTiling: 0
   m_AutoTiling: 0
-  m_Size: {x: 1.13, y: 1.25}
+  m_Size: {x: 0.8, y: 1.25}
   m_EdgeRadius: 0
 --- !u!95 &649931974
 Animator:
@@ -1320,12 +1320,10 @@ MonoBehaviour:
     ladderLayer:
       serializedVersion: 2
       m_Bits: 256
-    hangerLayer:
-      serializedVersion: 2
-      m_Bits: 1024
     pushableLayer:
       serializedVersion: 2
       m_Bits: 512
+    hangYRange: 0.3
     moveHorizontalInput: {x: 0, y: 0}
     MoveVerticalInput: {x: 0, y: 0}
     jumpRequested: 0
@@ -1338,9 +1336,9 @@ MonoBehaviour:
     isNearHanger: 0
     isHolding: 0
     isDead: 0
-    standingColliderSize: {x: 1.13, y: 1.25}
+    standingColliderSize: {x: 0.8, y: 1.25}
     standingColliderOffset: {x: 0, y: 0}
-    sneakColliderSize: {x: 1.13, y: 1.25}
+    sneakColliderSize: {x: 0.8, y: 1.25}
     sneakColliderOffset: {x: 0, y: 0.2}
     nearLadderCollider: {fileID: 0}
     nearHangerCollider: {fileID: 0}
@@ -2461,7 +2459,7 @@ GameObject:
   - component: {fileID: 1136981066}
   - component: {fileID: 1136981065}
   - component: {fileID: 1136981064}
-  m_Layer: 10
+  m_Layer: 7
   m_Name: Square (8)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -2693,7 +2691,7 @@ GameObject:
   - component: {fileID: 1844329947}
   - component: {fileID: 1844329946}
   - component: {fileID: 1844329945}
-  m_Layer: 10
+  m_Layer: 7
   m_Name: Square (10)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -2831,7 +2829,7 @@ GameObject:
   - component: {fileID: 1902813798}
   - component: {fileID: 1902813800}
   - component: {fileID: 1902813799}
-  m_Layer: 10
+  m_Layer: 7
   m_Name: Square (15)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -2969,7 +2967,7 @@ GameObject:
   - component: {fileID: 2034416784}
   - component: {fileID: 2034416783}
   - component: {fileID: 2034416782}
-  m_Layer: 10
+  m_Layer: 7
   m_Name: Square (13)
   m_TagString: Untagged
   m_Icon: {fileID: 0}

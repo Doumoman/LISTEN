@@ -6,7 +6,7 @@ public class TileMapEditor : Editor
 {
     private TileType _selected = TileType.Ground;
 
-    private static readonly string[] Names = { "Ground", "Ladder", "Pushable", "Door", "LockedBlock", "Hangable" };
+    private static readonly string[] Names = { "Ground", "Ladder", "Pushable", "Door", "LockedBlock" };
 
     // ── Inspector ─────────────────────────────────────────────
 

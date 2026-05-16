@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public enum TileType { Ground, Ladder, Pushable, Door, LockedBlock, Hangable }
+public enum TileType { Ground, Ladder, Pushable, Door, LockedBlock }
 
 [System.Serializable]
 public class TileData
@@ -21,7 +21,6 @@ public class TileMapData : MonoBehaviour
         { TileType.Pushable,    Color.black },
         { TileType.Door,        Color.gray },
         { TileType.LockedBlock, Color.green },
-        { TileType.Hangable,    Color.red },
     };
 
     // Door, LockedBlock 레이어는 Project Settings > Tags and Layers에서 추가 필요
@@ -32,7 +31,6 @@ public class TileMapData : MonoBehaviour
         { TileType.Pushable,    "Pushable" },
         { TileType.Door,        "Door" },
         { TileType.LockedBlock, "LockedBlock" },
-        { TileType.Hangable,    "Hangable" },
     };
 
     public IReadOnlyList<TileData> Tiles => _tiles;

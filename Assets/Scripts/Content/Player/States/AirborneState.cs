@@ -65,11 +65,12 @@ public class AirborneState : PlayerBaseState
             return;
         }
 
-        // Hangable 감지 → 낙하 중 + 머리가 Hangable 중심을 넘으면 매달리기
+        // Hangable 감지 → 낙하 중 + 플레이어 Y가 타일 Y보다 크고 차이가 hangYRange 이내면 매달리기
         if (data.isFalling && data.isNearHanger)
         {
-            float playerHeadY = fsm.transform.position.y + fsm.Bc.size.y * 0.5f;
-            if (playerHeadY > data.nearHangerCollider.bounds.center.y)
+            float playerY = fsm.transform.position.y + fsm.Bc.offset.y;
+            float hangerY = data.nearHangerCollider.bounds.center.y;
+            if (playerY > hangerY && (playerY - hangerY) < data.hangYRange)
             {
                 fsm.TransitionTo(fsm.HangState);
                 return;
