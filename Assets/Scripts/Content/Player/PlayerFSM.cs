@@ -22,6 +22,8 @@ public class PlayerFSM : MonoBehaviour
     public PlayerBaseState KilledState { get; private set; }
     public PlayerBaseState HangState { get; private set; }
 
+    private InputManager _inputManager;
+
     [Header("Physics")]
     private Vector2 _velocity; // 속도
     public Vector2 lastDir; // 마지막 방향
@@ -50,23 +52,25 @@ public class PlayerFSM : MonoBehaviour
         HangState = new HangState(this);
 
         // ㅡㅡㅡㅡ InputManager에서 이벤트 구독 ㅡㅡㅡㅡ
-        SingletonManagers.Input.OnMove -= HandleMoveInput;
-        SingletonManagers.Input.OnMove += HandleMoveInput;
+        _inputManager = SingletonManagers.Input;
 
-        SingletonManagers.Input.OnLadderMove -= HandleLadderMoveInput;
-        SingletonManagers.Input.OnLadderMove += HandleLadderMoveInput;
+        _inputManager.OnMove -= HandleMoveInput;
+        _inputManager.OnMove += HandleMoveInput;
 
-        SingletonManagers.Input.OnJumpPressed -= HandleJump;
-        SingletonManagers.Input.OnJumpPressed += HandleJump;
+        _inputManager.OnLadderMove -= HandleLadderMoveInput;
+        _inputManager.OnLadderMove += HandleLadderMoveInput;
 
-        SingletonManagers.Input.OnJumpReleased -= HandleJumpReleased;
-        SingletonManagers.Input.OnJumpReleased += HandleJumpReleased;
+        _inputManager.OnJumpPressed -= HandleJump;
+        _inputManager.OnJumpPressed += HandleJump;
 
-        SingletonManagers.Input.OnSneakPressed -= HandleSneak;
-        SingletonManagers.Input.OnSneakPressed += HandleSneak;
+        _inputManager.OnJumpReleased -= HandleJumpReleased;
+        _inputManager.OnJumpReleased += HandleJumpReleased;
 
-        SingletonManagers.Input.OnSneakReleased -= HandleSneakReleased;
-        SingletonManagers.Input.OnSneakReleased += HandleSneakReleased;
+        _inputManager.OnSneakPressed -= HandleSneak;
+        _inputManager.OnSneakPressed += HandleSneak;
+
+        _inputManager.OnSneakReleased -= HandleSneakReleased;
+        _inputManager.OnSneakReleased += HandleSneakReleased;
 
         lastDir = Vector2.right;
         TransitionTo(MoveState); // 초기 상태
@@ -298,15 +302,15 @@ public class PlayerFSM : MonoBehaviour
 
     private void OnDestroy()
     {
-        if (SingletonManagers.Input == null) return;
+        if (_inputManager == null) return;
 
-        SingletonManagers.Input.OnMove -= HandleMoveInput;
-        SingletonManagers.Input.OnLadderMove -= HandleLadderMoveInput;
+        _inputManager.OnMove -= HandleMoveInput;
+        _inputManager.OnLadderMove -= HandleLadderMoveInput;
 
-        SingletonManagers.Input.OnJumpPressed -= HandleJump;
-        SingletonManagers.Input.OnJumpReleased -= HandleJumpReleased;
+        _inputManager.OnJumpPressed -= HandleJump;
+        _inputManager.OnJumpReleased -= HandleJumpReleased;
 
-        SingletonManagers.Input.OnSneakPressed -= HandleSneak;
-        SingletonManagers.Input.OnSneakReleased -= HandleSneakReleased;
+        _inputManager.OnSneakPressed -= HandleSneak;
+        _inputManager.OnSneakReleased -= HandleSneakReleased;
     }
 }

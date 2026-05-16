@@ -21,6 +21,13 @@ public class SingletonManagers : Singleton<SingletonManagers>
     public static DataManager Data { get { return Instance?._data; } }
     public static StoryManager Story { get { return Instance?._story; } }
 
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetStaticState()
+    {
+        _isShuttingDown = false;
+        _instance = null;
+    }
+
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
     private static void InitializeBeforeSceneLoad()
     {
@@ -33,11 +40,6 @@ public class SingletonManagers : Singleton<SingletonManagers>
         base.Awake();
         Init(); // 가장 먼저 다른 Manager들 초기화
     }
-    private void Update()
-    {
-
-    }
-
     private bool _init = false;
     public void Init()
     {

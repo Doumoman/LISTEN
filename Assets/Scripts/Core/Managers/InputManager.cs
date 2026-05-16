@@ -113,8 +113,8 @@ public class InputManager : IManager
             _controls.GamePlay.Move.performed -= HandleMovePerformed;
             _controls.GamePlay.Move.canceled -= HandleMoveCanceled;
 
-            _controls.GamePlay.LadderMove.performed += HandleLadderMovePerformed;
-            _controls.GamePlay.LadderMove.canceled += HandleLadderMoveCanceled;
+            _controls.GamePlay.LadderMove.performed -= HandleLadderMovePerformed;
+            _controls.GamePlay.LadderMove.canceled -= HandleLadderMoveCanceled;
 
             _controls.GamePlay.Jump.performed -= HandleJumpPerformed;
             _controls.GamePlay.Jump.canceled -= HandleJumpCanceled;

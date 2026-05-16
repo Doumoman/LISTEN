@@ -2,8 +2,8 @@
 
 public class Singleton<T> : MonoBehaviour where T : MonoBehaviour
 {
-    private static T _instance;
-    private static bool _isShuttingDown = false;
+    protected static T _instance;
+    protected static bool _isShuttingDown = false;
     public static T Instance
     {
         get

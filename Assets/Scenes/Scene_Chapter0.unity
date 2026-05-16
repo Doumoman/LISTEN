@@ -1313,7 +1313,7 @@ MonoBehaviour:
     groundCheckDistance: 0.05
     solidLayer:
       serializedVersion: 2
-      m_Bits: 1664
+      m_Bits: 640
     groundLayer:
       serializedVersion: 2
       m_Bits: 128
