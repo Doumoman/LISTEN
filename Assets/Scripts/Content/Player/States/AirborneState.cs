@@ -2,6 +2,8 @@
 
 public class AirborneState : PlayerBaseState
 {
+    private const string PLAYER_MOVE = "Player_Move";
+
     private float jumpHoldTime = 0f;
     private bool isJumping = false;
 
@@ -74,9 +76,14 @@ public class AirborneState : PlayerBaseState
             }
         }
 
-        // ── 애니메이션 ──
-        // TODO
+        PlayAnim();
     }
 
     public override void Exit() { }
+
+    private void PlayAnim()
+    {
+        if (!anim.GetCurrentAnimatorStateInfo(0).IsName(PLAYER_MOVE))
+            anim.Play(PLAYER_MOVE);
+    }
 }

@@ -4,9 +4,14 @@ public class MoveState : PlayerBaseState
 {
     public MoveState(PlayerFSM fsm) : base(fsm) { }
 
+    private const string PLAYER_MOVE = "Player_Move";
+    private const string PLAYER_IDLE = "Player_Idle";
+    private const float CROSS_FADE_DURATION = 0.1f;
+
     public override void Enter()
     {
         fsm.SetVelocity(0f, 0f);
+        PlayMoveAnim();
     }
 
     public override void Update()
@@ -18,7 +23,7 @@ public class MoveState : PlayerBaseState
             return;
         }
 
-        // 낙하 - > AirborneState
+        // 낙하 -> AirborneState
         if (!data.isGrounded)
         {
             fsm.TransitionTo(fsm.AirborneState);
@@ -48,12 +53,20 @@ public class MoveState : PlayerBaseState
 
         // 이동 처리
         float targetVel = data.moveHorizontalInput.x * data.moveSpeed;
-        fsm.SetVelocity(targetVel, 0f); // x축에 대해서만 이동
+        fsm.SetVelocity(targetVel, 0f);
 
-
-        // ── 애니메이션 ──
-        // TODO
+        // 애니메이션
+        PlayMoveAnim();
     }
 
     public override void Exit() { }
+
+    private void PlayMoveAnim()
+    {
+        bool isMoving = Mathf.Abs(data.moveHorizontalInput.x) > 0.001f;
+        string target = isMoving ? PLAYER_MOVE : PLAYER_IDLE;
+
+        if (!anim.GetCurrentAnimatorStateInfo(0).IsName(target))
+            anim.Play(target);
+    }
 }

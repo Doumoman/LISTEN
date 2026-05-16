@@ -2,11 +2,18 @@
 
 public class SneakMoveState : PlayerBaseState
 {
+    private const string PLAYER_SNEAK = "Player_Sneak";
+    private const string PLAYER_SNEAKIDLE = "Player_SneakIdle";
+
+    private Vector2 _savedColliderSize;
+    private Vector2 _savedColliderOffset;
+
     public SneakMoveState(PlayerFSM fsm) : base(fsm) { }
 
     public override void Enter()
     {
         fsm.SetVelocity(0f, 0f);
+        PlayAnim();
     }
 
     public override void Update()
@@ -39,9 +46,21 @@ public class SneakMoveState : PlayerBaseState
         float horizontalVel = data.moveHorizontalInput.x * data.sneakSpeed;
         fsm.SetVelocity(horizontalVel, 0f);
 
-        // ── 애니메이션 ──
-        // TODO
+        PlayAnim();
     }
 
-    public override void Exit() { }
+    public override void Exit()
+    {
+        fsm.Bc.size = _savedColliderSize;
+        fsm.Bc.offset = _savedColliderOffset;
+    }
+
+    private void PlayAnim()
+    {
+        bool isMoving = Mathf.Abs(data.moveHorizontalInput.x) > 0.001f;
+        string target = isMoving ? PLAYER_SNEAK : PLAYER_SNEAKIDLE;
+
+        if (!anim.GetCurrentAnimatorStateInfo(0).IsName(target))
+            anim.Play(target);
+    }
 }

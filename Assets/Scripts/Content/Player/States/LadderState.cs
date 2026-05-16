@@ -2,12 +2,15 @@
 
 public class LadderState : PlayerBaseState
 {
+    private const string PLAYER_LADDER = "Player_Ladder";
+
     public LadderState(PlayerFSM fsm) : base(fsm) { }
     private Collider2D _ladderCollider;
 
     public override void Enter()
     {
         fsm.SetVelocity(0f, 0f);
+        PlayAnim();
 
         _ladderCollider = data.nearLadderCollider;
 
@@ -58,8 +61,8 @@ public class LadderState : PlayerBaseState
 
             fsm.SetVelocity(0f, verticalVel);
 
-            // ── 애니메이션 ──
-            // TODO
+            anim.speed = Mathf.Abs(data.MoveVerticalInput.y) > 0.001f ? 1f : 0f;
+            PlayAnim();
         }
         else
         {
@@ -69,6 +72,13 @@ public class LadderState : PlayerBaseState
 
     public override void Exit()
     {
+        anim.speed = 1f;
         fsm.SetVelocity(0f, 0f);
+    }
+
+    private void PlayAnim()
+    {
+        if (!anim.GetCurrentAnimatorStateInfo(0).IsName(PLAYER_LADDER))
+            anim.Play(PLAYER_LADDER);
     }
 }
