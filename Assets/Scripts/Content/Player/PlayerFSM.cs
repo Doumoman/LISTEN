@@ -144,8 +144,9 @@ public class PlayerFSM : MonoBehaviour
         transform.position += (Vector3)delta;
     }
 
-    // 이번 프레임에 이동할 거리를 미리 계산하고,
+    // 이번 프레임에 이동할 수평 거리를 미리 계산하고,
     // 그 방향에 벽이 있는지 확인하고 벽에 달라붙을 만큼만 이동거리를 줄여서 반환하는 함수
+    // 만약 isGrounded 상태이고 Ray가 경사를 감지했을때 그 법선 각도가 _maxSlopeAngle보다 작으면 y 좌표를 보정해준다.
     private Vector2 ResolveHorizontal(Vector2 delta)
     {
         if (Mathf.Abs(delta.x) < 0.0001f) return delta;
@@ -165,7 +166,7 @@ public class PlayerFSM : MonoBehaviour
             if (hit.collider != null)
             {
                 float slopeAngle = Vector2.Angle(hit.normal, Vector2.up);
-                if (_playerData.isGrounded && slopeAngle <= _maxSlopeAngle && hit.normal.y > 0.001f)
+                if (_playerData.isGrounded && slopeAngle <= _maxSlopeAngle && hit.normal.y > 0.001f && _velocity.y <= 0f)
                 {
                     // 경사면: 수평 이동을 유지하고 Y축을 보정해 경사를 타고 오름
                     delta.y = -delta.x * (hit.normal.x / hit.normal.y);
@@ -181,6 +182,8 @@ public class PlayerFSM : MonoBehaviour
         return delta;
     }
 
+    // 이번 프레임에 이동할 수직 거리를 미리 계산한다
+    // Player가 밞을 수 있는 Layer가 있으면 그에 따라 y좌표를 보정한다
     private Vector2 ResolveVertical(Vector2 delta)
     {
         if (Mathf.Abs(delta.y) < 0.0001f) return delta;

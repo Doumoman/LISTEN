@@ -16,7 +16,7 @@ TagManager:
   - Ground
   - Ladder
   - Pushable
-  - 
+  - NPC
   - Door
   - LockedBlock
   - FluidParticle

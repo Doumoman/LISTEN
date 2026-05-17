@@ -14,6 +14,7 @@ public class InputManager : IManager
     public event Action OnJumpReleased; // 점프 키 해제
     public event Action OnSneakPressed; // 엎드리기
     public event Action OnSneakReleased; // 엎드리기 키 해제
+    public event Action OnTalkPressed; // 대화 시작
     public event Action<Vector2> OnMove; // 플레이어 이동
     public event Action<Vector2> OnLadderMove; // 플레이어 사다리 이동
 
@@ -48,6 +49,7 @@ public class InputManager : IManager
         _controls.GamePlay.Sneak.performed += HandleSneakPerformed;
         _controls.GamePlay.Sneak.canceled += HandleSneakCanceled;
 
+        _controls.GamePlay.Talk.performed += HandleTalkPerformed;
 
         // ㅡㅡㅡㅡㅡ UI Action Map ㅡㅡㅡㅡㅡ
         _controls.UI.Input.performed += HandleUIInputPerformed;
@@ -95,6 +97,7 @@ public class InputManager : IManager
         OnJumpReleased = null;
         OnSneakPressed = null;
         OnSneakReleased = null;
+        OnTalkPressed = null;
         OnMove = null;
         OnLadderMove = null;
         OnInput = null;
@@ -122,6 +125,8 @@ public class InputManager : IManager
             _controls.GamePlay.Sneak.performed -= HandleSneakPerformed;
             _controls.GamePlay.Sneak.canceled -= HandleSneakCanceled;
 
+            _controls.GamePlay.Talk.performed -= HandleTalkPerformed;
+
             // ㅡㅡㅡㅡㅡ UI Action Map ㅡㅡㅡㅡㅡ
             _controls.UI.Input.performed -= HandleUIInputPerformed;
             _controls.UI.Submit.performed -= HandleSubmitPerformed;
@@ -148,6 +153,7 @@ public class InputManager : IManager
 
     private void HandleSneakPerformed(InputAction.CallbackContext context) => OnSneakPressed?.Invoke();
     private void HandleSneakCanceled(InputAction.CallbackContext context) => OnSneakReleased?.Invoke();
+    private void HandleTalkPerformed(InputAction.CallbackContext context) => OnTalkPressed?.Invoke();
 
     private void HandleMovePerformed(InputAction.CallbackContext context) => OnMove?.Invoke(context.ReadValue<Vector2>());
     private void HandleMoveCanceled(InputAction.CallbackContext context) => OnMove?.Invoke(Vector2.zero);
