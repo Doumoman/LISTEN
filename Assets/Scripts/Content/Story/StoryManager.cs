@@ -1,13 +1,16 @@
 ﻿using System;
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using Yarn.Unity;
 
 public class StoryManager : IManager
 {
+    private const string BLOCK_PLAYER_INPUT = "block_player_input";
     private const string FADE_IN = "fade_in";
     private const string FADE_OUT = "fade_out";
     private const string WAIT_FOR_INTERACTION = "wait_for_interaction";
+    private const string TELEPORT_PLAYER = "teleport_player";
 
     private DialogueRunner _runner;
     private bool _init = false;
@@ -15,13 +18,15 @@ public class StoryManager : IManager
     private string _waitingInteractionName = String.Empty;
     private bool _isInteractionCompleted = false;
 
+    private readonly Dictionary<string, Transform> _teleportPoints = new();
+
     public void Init()
     {
         if (_init) return;
         _init = true;
     }
 
-    public void Clear() { }
+    public void Clear() { _teleportPoints.Clear(); }
     public void OnDestroy()
     {
         UnregisterCommands();
@@ -44,24 +49,21 @@ public class StoryManager : IManager
     /// <summary>
     /// 특정 스토리 노드를 시작한다.
     /// </summary>
-    public async void StartStory(string nodeName, Action onComplete = null)
+    public async YarnTask StartStory(string nodeName, Action onComplete = null)
     {
         if (_runner == null) return;
         if (!_runner.Dialogue.NodeExists(nodeName)) return;
 
         await _runner.StartDialogue(nodeName);
-
-        if (onComplete != null)
-        {
-            onComplete?.Invoke();
-        }
-
+        onComplete?.Invoke();
     }
 
-    public async void StopStory()
+    public async YarnTask StopStory()
     {
-        if (_runner != null && _runner.IsDialogueRunning)
-            await _runner.Stop();
+        if (_runner == null || !_runner.IsDialogueRunning) return;
+        _waitingInteractionName = string.Empty;
+        _isInteractionCompleted = false;
+        await _runner.Stop();
     }
 
     public bool IsRunning => _runner != null && _runner.IsDialogueRunning;
@@ -70,9 +72,11 @@ public class StoryManager : IManager
     {
         if (_runner == null) return;
 
-        _runner.AddCommandHandler(FADE_IN,    (System.Func<float, IEnumerator>)  CmdFadeIn);
-        _runner.AddCommandHandler(FADE_OUT,   (System.Func<float, IEnumerator>)  CmdFadeOut);
-        _runner.AddCommandHandler(WAIT_FOR_INTERACTION, (System.Func<string, IEnumerator>) CmdWaitForInteraction);
+        _runner.AddCommandHandler(BLOCK_PLAYER_INPUT, (bool isTalking) => { SingletonManagers.Input.SetInputModeUI(isTalking); });
+        _runner.AddCommandHandler(FADE_IN, (System.Func<float, IEnumerator>)CmdFadeIn);
+        _runner.AddCommandHandler(FADE_OUT, (System.Func<float, IEnumerator>)CmdFadeOut);
+        _runner.AddCommandHandler(WAIT_FOR_INTERACTION, (System.Func<string, IEnumerator>)CmdWaitForInteraction);
+        _runner.AddCommandHandler(TELEPORT_PLAYER, (System.Action<string>)CmdTeleportPlayer);
 
         // TODO: 게임 전용 커맨드 등록
         // _runner.AddCommandHandler("커맨드명", (Action<파라미터타입>) CmdXxx);
@@ -85,12 +89,20 @@ public class StoryManager : IManager
         _runner.RemoveCommandHandler(FADE_IN);
         _runner.RemoveCommandHandler(FADE_OUT);
         _runner.RemoveCommandHandler(WAIT_FOR_INTERACTION);
+        _runner.RemoveCommandHandler(TELEPORT_PLAYER);
 
         // TODO: 게임 전용 커맨드 해제
         // _runner.RemoveCommandHandler("커맨드 명");
     }
 
+    /// <summary>
+    /// 씬 바인더에서 텔레포트 포인트를 등록한다.
+    /// </summary>
+    public void RegisterTeleportPoint(string name, Transform point) => _teleportPoints[name] = point;
+    public void UnregisterTeleportPoint(string name) => _teleportPoints.Remove(name);
+
     #region Yarn Spinner에서 사용할 커맨드 함수들
+
     private IEnumerator CmdFadeIn(float duration) // 화면 페이드 인
     {
         bool done = false;
@@ -110,10 +122,27 @@ public class StoryManager : IManager
         _waitingInteractionName = interactionName;
         _isInteractionCompleted = false;
 
-        yield return new WaitUntil(() => _isInteractionCompleted); // 상호작용이 끝날 때 까지 대기
+        SingletonManagers.Input.SetInputModeUI(false); // 플레이어가 이동해서 상호작용할 수 있도록 허용
+
+        yield return new WaitUntil(() => _isInteractionCompleted);
+
+        SingletonManagers.Input.SetInputModeUI(true); // 대화 모드로 복귀
 
         _waitingInteractionName = string.Empty;
         _isInteractionCompleted = false;
+    }
+
+    private void CmdTeleportPlayer(string destinationName) // 플레이어를 등록된 텔레포트 포인트로 순간이동
+    {
+        if (!_teleportPoints.TryGetValue(destinationName, out var dest))
+        {
+            Debug.LogWarning($"[StoryManager] 텔레포트 포인트 '{destinationName}'을 찾을 수 없습니다.");
+            return;
+        }
+
+        var player = UnityEngine.Object.FindFirstObjectByType<PlayerFSM>();
+        if (player != null)
+            player.transform.position = dest.position;
     }
 
     #endregion
