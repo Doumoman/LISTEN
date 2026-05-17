@@ -6,7 +6,7 @@ public class TileMapEditor : Editor
 {
     private TileType _selected = TileType.Ground;
 
-    private static readonly string[] Names = { "Ground", "Ladder", "Pushable", "Door", "LockedBlock" };
+    private static readonly string[] Names = { "Ground", "Ladder", "Pushable", "Door", "LockedBlock", "Water", "Lava" };
 
     // ── Inspector ─────────────────────────────────────────────
 
@@ -59,6 +59,9 @@ public class TileMapEditor : Editor
 
         if (GUILayout.Button("Rebuild Colliders"))
             RebuildColliders(map);
+
+        if (GUILayout.Button("Rebuild Fluids"))
+            map.RebuildFluids();
 
         EditorGUILayout.Space(2);
 
@@ -190,17 +193,30 @@ public class TileMapEditor : Editor
 
         Transform layerParent = GetOrCreateLayerParent(map, type);
 
-        var go = new GameObject(ColliderName(pos));
+        GameObject go = new GameObject(ColliderName(pos));
         Undo.RegisterCreatedObjectUndo(go, "Create Tile Collider");
+
         go.transform.SetParent(layerParent);
         go.transform.position = map.GridToWorld(pos);
 
-        var box = go.AddComponent<BoxCollider2D>();
-        if (type == TileType.Ground)
-            box.compositeOperation = Collider2D.CompositeOperation.Merge;
+        BoxCollider2D box = go.AddComponent<BoxCollider2D>();
 
-        int layer = LayerMask.NameToLayer(TileMapData.LayerNames[type]);
-        if (layer >= 0) go.layer = layer;
+        if (type == TileType.Water || type == TileType.Lava || type == TileType.Ladder)
+        {
+            box.isTrigger = true;
+        }
+        else if (type == TileType.Ground)
+        {
+            box.compositeOperation = Collider2D.CompositeOperation.Merge;
+        }
+
+        if (TileMapData.LayerNames.TryGetValue(type, out string layerName))
+        {
+            int layer = LayerMask.NameToLayer(layerName);
+
+            if (layer >= 0)
+                go.layer = layer;
+        }
     }
 
     private void RemoveCollider(TileMapData map, Vector2Int pos)
@@ -239,8 +255,15 @@ public class TileMapEditor : Editor
             go.transform.position = map.GridToWorld(tile.gridPos);
 
             var box = go.AddComponent<BoxCollider2D>();
-            if (tile.type == TileType.Ground)
+
+            if (tile.type == TileType.Water || tile.type == TileType.Lava)
+            {
+                box.isTrigger = true;
+            }
+            else if (tile.type == TileType.Ground)
+            {
                 box.compositeOperation = Collider2D.CompositeOperation.Merge;
+            }
 
             int layer = LayerMask.NameToLayer(TileMapData.LayerNames[tile.type]);
             if (layer >= 0) go.layer = layer;

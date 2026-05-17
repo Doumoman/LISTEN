@@ -1,0 +1,68 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &3691689645808441099
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7734942481922283607}
+  - component: {fileID: 6808229594138704501}
+  m_Layer: 0
+  m_Name: LavaFluid
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &7734942481922283607
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3691689645808441099}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -2.79545, y: -2.80636, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &6808229594138704501
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3691689645808441099}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 912febe9a9e300e47927660677c26dff, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FluidController
+  chunkPrefab: {fileID: 0}
+  visualRadius: 0.2
+  colliderRadius: 0.1
+  spawnJitter: 0.035
+  gravityScale: 1.2
+  mass: 0.12
+  linearDrag: 1.4
+  angularDrag: 2.5
+  restDistance: 0.36
+  interactionRadius: 0.95
+  pressureForce: 9
+  cohesionForce: 5.5
+  viscosity: 0.35
+  bounce: 0.15
+  idleWobbleForce: 0.035
+  idleWobbleSpeed: 2.4
+  deformByVelocity: 1
+  stretchBySpeed: 0.11
+  maxStretch: 1.55
+  visualReturnSpeed: 12
+  waterColor: {r: 0.1, g: 0.45, b: 1, a: 0.8}
+  lavaColor: {r: 1, g: 0.25, b: 0, a: 0.9}
