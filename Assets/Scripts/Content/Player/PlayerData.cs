@@ -18,7 +18,7 @@ public class PlayerData
     public float groundCheckDistance = 0.05f; // 커질수록 ground 감지하는 ray가 길어짐
 
     [Header("Layer 감지")]
-    public LayerMask solidLayer; // 밟을 수 있는 모든 레이어 (Ground, Pushable, ... )
+    public LayerMask collisionLayer; // 충돌 처리 대상 레이어 (Ground, Pushable, ... )
     public LayerMask groundLayer;
     public LayerMask ladderLayer;
     public LayerMask pushableLayer;

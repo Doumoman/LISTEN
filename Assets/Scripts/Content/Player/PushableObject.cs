@@ -6,7 +6,7 @@ public class PushableObject : MonoBehaviour, IPushable
     [SerializeField] private float gravity = -25f; // 중력
     [SerializeField] private float groundCheckDistance = 0.05f; // 커질수록 ground를 감지하는 ray가 길어짐
     [SerializeField] private float groundCheckInset = 0.1f; // ray를 오브젝트 가장자리에서 얼마나 안쪽에서 발사할지
-    [SerializeField] private LayerMask solidLayer;
+    [SerializeField] private LayerMask collisionLayer;
 
     private Rigidbody2D _rb;
     private BoxCollider2D _bc;
@@ -82,7 +82,7 @@ public class PushableObject : MonoBehaviour, IPushable
             Vector2 origin = center + Vector2.right * Mathf.Lerp(-halfW, halfW, t);
             origin.y -= _bc.size.y * 0.5f - SkinWidth;
 
-            RaycastHit2D hit = Physics2D.Raycast(origin, Vector2.down, groundCheckDistance + SkinWidth, solidLayer);
+            RaycastHit2D hit = Physics2D.Raycast(origin, Vector2.down, groundCheckDistance + SkinWidth, collisionLayer);
             if (hit.collider != null) return true;
         }
         return false;
@@ -103,7 +103,7 @@ public class PushableObject : MonoBehaviour, IPushable
             Vector2 origin = center + Vector2.right * Mathf.Lerp(-halfW, halfW, t);
             origin.y += dir * (_bc.size.y * 0.5f - SkinWidth);
 
-            RaycastHit2D hit = Physics2D.Raycast(origin, Vector2.up * dir, rayLength, solidLayer);
+            RaycastHit2D hit = Physics2D.Raycast(origin, Vector2.up * dir, rayLength, collisionLayer);
             if (hit.collider != null)
             {
                 delta.y = (hit.distance - SkinWidth) * dir;
@@ -129,7 +129,7 @@ public class PushableObject : MonoBehaviour, IPushable
             Vector2 origin = center + Vector2.up * Mathf.Lerp(-halfH, halfH, t);
             origin.x += dir * (_bc.size.x * 0.5f - SkinWidth);
 
-            RaycastHit2D hit = Physics2D.Raycast(origin, Vector2.right * dir, rayLength, solidLayer);
+            RaycastHit2D hit = Physics2D.Raycast(origin, Vector2.right * dir, rayLength, collisionLayer);
             if (hit.collider != null)
             {
                 delta.x = (hit.distance - SkinWidth) * dir;

@@ -31,6 +31,8 @@ public class PlayerFSM : MonoBehaviour
     private readonly float SkinWidth = 0.02f; // 콜라이더 겉을 감싸는 얇은 막, 충돌 버그 방지
     private readonly int RayCount = 3;
 
+    [SerializeField] private float _maxSlopeAngle = 45f; // 오를 수 있는 최대 경사 각도
+
     private void Awake()
     {
         Anim = GetComponent<Animator>();
@@ -159,11 +161,20 @@ public class PlayerFSM : MonoBehaviour
             Vector2 origin = center + Vector2.up * Mathf.Lerp(-halfH, halfH, t);
             origin.x += dir * (Bc.size.x * 0.5f - SkinWidth);
 
-            RaycastHit2D hit = Physics2D.Raycast(origin, Vector2.right * dir, rayLength, _playerData.solidLayer);
+            RaycastHit2D hit = Physics2D.Raycast(origin, Vector2.right * dir, rayLength, _playerData.collisionLayer);
             if (hit.collider != null)
             {
-                delta.x = (hit.distance - SkinWidth) * dir;
-                SetVelocityX(0f);
+                float slopeAngle = Vector2.Angle(hit.normal, Vector2.up);
+                if (_playerData.isGrounded && slopeAngle <= _maxSlopeAngle && hit.normal.y > 0.001f)
+                {
+                    // 경사면: 수평 이동을 유지하고 Y축을 보정해 경사를 타고 오름
+                    delta.y = -delta.x * (hit.normal.x / hit.normal.y);
+                }
+                else
+                {
+                    delta.x = (hit.distance - SkinWidth) * dir;
+                    SetVelocityX(0f);
+                }
                 break;
             }
         }
@@ -185,7 +196,7 @@ public class PlayerFSM : MonoBehaviour
             Vector2 origin = center + Vector2.right * Mathf.Lerp(-halfW, halfW, t);
             origin.y += dir * (Bc.size.y * 0.5f - SkinWidth);
 
-            RaycastHit2D hit = Physics2D.Raycast(origin, Vector2.up * dir, rayLength, _playerData.solidLayer);
+            RaycastHit2D hit = Physics2D.Raycast(origin, Vector2.up * dir, rayLength, _playerData.collisionLayer);
             if (hit.collider != null)
             {
                 delta.y = (hit.distance - SkinWidth) * dir;
@@ -208,7 +219,7 @@ public class PlayerFSM : MonoBehaviour
             Vector2 origin = center + Vector2.right * Mathf.Lerp(-halfW, halfW, t);
             origin.y -= Bc.size.y * 0.5f - SkinWidth;
 
-            RaycastHit2D hit = Physics2D.Raycast(origin, Vector2.down, _playerData.groundCheckDistance + SkinWidth, _playerData.solidLayer);
+            RaycastHit2D hit = Physics2D.Raycast(origin, Vector2.down, _playerData.groundCheckDistance + SkinWidth, _playerData.collisionLayer);
             if (hit.collider != null)
             {
                 _playerData.isGrounded = true;
@@ -239,7 +250,7 @@ public class PlayerFSM : MonoBehaviour
             float tileTopY    = Mathf.Ceil(hit.point.y + 0.01f);
             Vector2 aboveCenter = new Vector2(tileCenterX, tileTopY + 0.5f);
 
-            if (Physics2D.OverlapCircle(aboveCenter, 0.4f, _playerData.solidLayer) == null)
+            if (Physics2D.OverlapCircle(aboveCenter, 0.4f, _playerData.collisionLayer) == null)
             {
                 _playerData.nearHangerCollider = hit.collider;
                 _playerData.isNearHanger = true;
@@ -314,3 +325,4 @@ public class PlayerFSM : MonoBehaviour
         _inputManager.OnSneakReleased -= HandleSneakReleased;
     }
 }
+

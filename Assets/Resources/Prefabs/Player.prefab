@@ -213,7 +213,7 @@ MonoBehaviour:
     gravity: -70
     maxFallSpeed: -20
     groundCheckDistance: 0.05
-    solidLayer:
+    collisionLayer:
       serializedVersion: 2
       m_Bits: 640
     groundLayer:
