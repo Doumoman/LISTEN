@@ -5,6 +5,7 @@ using UnityEditor;
 public class TileMapEditor : Editor
 {
     private TileType _selected = TileType.Ground;
+    private Vector2 _colliderSize = Vector2.one;
 
     private static readonly string[] Names = { "Ground", "Ladder", "Pushable", "Door", "LockedBlock", "Water", "Lava" };
 
@@ -50,8 +51,14 @@ public class TileMapEditor : Editor
         }
 
         EditorGUILayout.Space(6);
+        EditorGUILayout.LabelField("Collider Size", EditorStyles.boldLabel);
+        _colliderSize = EditorGUILayout.Vector2Field("W x H", _colliderSize);
+        _colliderSize.x = Mathf.Max(0.1f, _colliderSize.x);
+        _colliderSize.y = Mathf.Max(0.1f, _colliderSize.y);
+
+        EditorGUILayout.Space(4);
         EditorGUILayout.HelpBox(
-            $"선택: {_selected}\n" +
+            $"선택: {_selected}  |  크기: {_colliderSize.x:F1} x {_colliderSize.y:F1}\n" +
             "LMB = 페인트   RMB / Shift+LMB = 지우기",
             MessageType.None);
 
@@ -112,10 +119,10 @@ public class TileMapEditor : Editor
             {
                 bool replacing = map.HasTile(gridPos);
                 TileType prevType = replacing ? map.GetTile(gridPos).type : default;
-                map.AddOrReplace(gridPos, _selected);
+                map.AddOrReplace(gridPos, _selected, _colliderSize);
 
                 if (!replacing || prevType != _selected)
-                    UpdateCollider(map, gridPos, _selected);
+                    UpdateCollider(map, gridPos, _selected, _colliderSize);
             }
 
             EditorUtility.SetDirty(target);
@@ -130,10 +137,12 @@ public class TileMapEditor : Editor
     private void DrawCursor(TileMapData map, Vector2Int gridPos)
     {
         Color c = TileMapData.Colors[_selected];
-        Vector3 bl = map.GridToWorld(gridPos) - new Vector3(0.5f, 0.5f, 0f);
+        Vector3 center = map.GridToWorld(gridPos);
+        float rx = center.x - _colliderSize.x * 0.5f;
+        float ry = center.y - _colliderSize.y * 0.5f;
 
         Handles.DrawSolidRectangleWithOutline(
-            new Rect(bl.x, bl.y, 1f, 1f),
+            new Rect(rx, ry, _colliderSize.x, _colliderSize.y),
             new Color(c.r, c.g, c.b, 0.2f),
             c);
     }
@@ -187,7 +196,7 @@ public class TileMapEditor : Editor
         return parentGO.transform;
     }
 
-    private void UpdateCollider(TileMapData map, Vector2Int pos, TileType type)
+    private void UpdateCollider(TileMapData map, Vector2Int pos, TileType type, Vector2 colliderSize)
     {
         RemoveCollider(map, pos);
 
@@ -197,9 +206,12 @@ public class TileMapEditor : Editor
         Undo.RegisterCreatedObjectUndo(go, "Create Tile Collider");
 
         go.transform.SetParent(layerParent);
-        go.transform.position = map.GridToWorld(pos);
+        // naming fix: transform을 corner에 배치해 Tile_x_y 이름과 position이 일치하도록
+        go.transform.position = map.GridToWorld(pos) - new Vector3(0.5f, 0.5f, 0f);
 
         BoxCollider2D box = go.AddComponent<BoxCollider2D>();
+        box.offset = new Vector2(0.5f, 0.5f);  // collider center = cell 중앙 유지
+        box.size = colliderSize;
 
         if (type == TileType.Water || type == TileType.Lava || type == TileType.Ladder)
         {
@@ -252,11 +264,14 @@ public class TileMapEditor : Editor
             Transform layerParent = map.transform.Find(tile.type.ToString());
             var go = new GameObject(ColliderName(tile.gridPos));
             go.transform.SetParent(layerParent);
-            go.transform.position = map.GridToWorld(tile.gridPos);
+            // naming fix: transform을 corner에 배치
+            go.transform.position = map.GridToWorld(tile.gridPos) - new Vector3(0.5f, 0.5f, 0f);
 
             var box = go.AddComponent<BoxCollider2D>();
+            box.offset = new Vector2(0.5f, 0.5f);  // collider center = cell 중앙 유지
+            box.size = tile.colliderSize;
 
-            if (tile.type == TileType.Water || tile.type == TileType.Lava)
+            if (tile.type == TileType.Water || tile.type == TileType.Lava || tile.type == TileType.Ladder)
             {
                 box.isTrigger = true;
             }

@@ -8,6 +8,7 @@ public class TileData
 {
     public Vector2Int gridPos;
     public TileType type;
+    public Vector2 colliderSize = Vector2.one;
 }
 
 public class TileMapData : MonoBehaviour
@@ -46,13 +47,16 @@ public class TileMapData : MonoBehaviour
 
     public TileData GetTile(Vector2Int pos) => _tiles.Find(t => t.gridPos == pos);
 
-    public void AddOrReplace(Vector2Int pos, TileType type)
+    public void AddOrReplace(Vector2Int pos, TileType type, Vector2 colliderSize)
     {
         int idx = _tiles.FindIndex(t => t.gridPos == pos);
         if (idx >= 0)
+        {
             _tiles[idx].type = type;
+            _tiles[idx].colliderSize = colliderSize;
+        }
         else
-            _tiles.Add(new TileData { gridPos = pos, type = type });
+            _tiles.Add(new TileData { gridPos = pos, type = type, colliderSize = colliderSize });
     }
 
     public bool RemoveTile(Vector2Int pos)
@@ -207,12 +211,13 @@ public class TileMapData : MonoBehaviour
         {
             Color c = Colors[tile.type];
             Vector3 center = GridToWorld(tile.gridPos);
+            Vector2 sz = tile.colliderSize;
 
             Gizmos.color = new Color(c.r, c.g, c.b, 0.35f);
-            Gizmos.DrawCube(center, new Vector3(0.98f, 0.98f, 0.01f));
+            Gizmos.DrawCube(center, new Vector3(sz.x * 0.98f, sz.y * 0.98f, 0.01f));
 
             Gizmos.color = c;
-            Gizmos.DrawWireCube(center, new Vector3(1f, 1f, 0.01f));
+            Gizmos.DrawWireCube(center, new Vector3(sz.x, sz.y, 0.01f));
         }
     }
 }
