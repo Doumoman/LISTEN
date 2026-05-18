@@ -14,7 +14,7 @@ public class AirborneState : PlayerBaseState
         jumpHoldTime = 0f;
         data.isFalling = false;
 
-        if (data.jumpRequested)
+        if (data.isJumpRequested)
         {
             isJumping = true;
             fsm.SetVelocityY(data.jumpSpeed);

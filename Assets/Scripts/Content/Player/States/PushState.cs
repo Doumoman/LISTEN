@@ -21,7 +21,7 @@ public class PushState : PlayerBaseState
         }
 
         // 점프 이탈 (공중으로 나감) → AirborneState
-        if (data.jumpRequested)
+        if (data.isJumpRequested)
         {
             fsm.TransitionTo(fsm.AirborneState);
             return;

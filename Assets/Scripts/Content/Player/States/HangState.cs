@@ -27,7 +27,7 @@ public class HangState : PlayerBaseState
 
         // 점프 → 새 점프로 AirborneState 전환 (점프 초기화 효과)
         // 점프 키로만 HangState 탈출 가능
-        if (data.jumpRequested)
+        if (data.isJumpRequested)
         {
             fsm.TransitionTo(fsm.AirborneState);
             return;

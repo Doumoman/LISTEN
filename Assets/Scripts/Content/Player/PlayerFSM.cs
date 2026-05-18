@@ -30,8 +30,7 @@ public class PlayerFSM : MonoBehaviour
 
     private readonly float SkinWidth = 0.02f; // 콜라이더 겉을 감싸는 얇은 막, 충돌 버그 방지
     private readonly int RayCount = 3;
-
-    [SerializeField] private float _maxSlopeAngle = 45f; // 오를 수 있는 최대 경사 각도
+    private float _groundedGraceTimer = 0f;
 
     private void Awake()
     {
@@ -110,7 +109,7 @@ public class PlayerFSM : MonoBehaviour
     private void LateUpdate()
     {
         // 1프레임 소비 플래그 초기화
-        _playerData.jumpRequested = false;
+        _playerData.isJumpRequested = false;
     }
 
     // ㅡㅡ 상태 전이 함수 ㅡㅡ
@@ -166,7 +165,7 @@ public class PlayerFSM : MonoBehaviour
             if (hit.collider != null)
             {
                 float slopeAngle = Vector2.Angle(hit.normal, Vector2.up);
-                if (_playerData.isGrounded && slopeAngle <= _maxSlopeAngle && hit.normal.y > 0.001f && _velocity.y <= 0f)
+                if (_playerData.isGrounded && slopeAngle <= _playerData.maxSlopeAngle && hit.normal.y > 0.001f && _velocity.y <= 0f)
                 {
                     // 경사면: 수평 이동을 유지하고 Y축을 보정해 경사를 타고 오름
                     delta.y = -delta.x * (hit.normal.x / hit.normal.y);
@@ -216,6 +215,7 @@ public class PlayerFSM : MonoBehaviour
         Vector2 center = (Vector2)transform.position + Bc.offset;
         float halfW = Bc.size.x * 0.5f - SkinWidth;
 
+        // Collider의 width를 RayCount 수 만큼 일정 간격으로 나눠서 수직 아래로 Ray를 쏜다
         for (int i = 0; i < RayCount; i++)
         {
             float t = (RayCount == 1) ? 0.5f : (float)i / (RayCount - 1);
@@ -225,9 +225,17 @@ public class PlayerFSM : MonoBehaviour
             RaycastHit2D hit = Physics2D.Raycast(origin, Vector2.down, _playerData.groundCheckDistance + SkinWidth, _playerData.collisionLayer);
             if (hit.collider != null)
             {
+                _groundedGraceTimer = _playerData.groundGraceTime;
                 _playerData.isGrounded = true;
                 return;
             }
+        }
+
+        if (_groundedGraceTimer > 0f)
+        {
+            _groundedGraceTimer -= Time.deltaTime;
+            _playerData.isGrounded = true;
+            return;
         }
         _playerData.isGrounded = false;
     }
@@ -307,7 +315,7 @@ public class PlayerFSM : MonoBehaviour
     private void HandleLadderMoveInput(Vector2 dir) => _playerData.MoveVerticalInput = dir;
     private void HandleJump()
     {
-        _playerData.jumpRequested = true;
+        _playerData.isJumpRequested = true;
         _playerData.isJumpHeld = true;
     }
     private void HandleJumpReleased() => _playerData.isJumpHeld = false;

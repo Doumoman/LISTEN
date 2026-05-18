@@ -27,7 +27,7 @@ public class PlayerData
     [Header("런타임 플래그")]
     public Vector2 moveHorizontalInput; // 입력받은 좌우 이동 방향
     public Vector2 MoveVerticalInput; // 입력받은 상하 이동 방향
-    public bool jumpRequested; // 점프 요구
+    public bool isJumpRequested; // 점프 요구
     public bool isJumpHeld; // 점프 키 홀드 중
     public bool isFalling; // 낙하 중인지
     public bool isSneakHeld; // 엎드리기 키 홀드 중
@@ -38,12 +38,16 @@ public class PlayerData
     public bool isHolding; // 물체를 들고 있는지
     public bool isDead; // 플레이어 사망 여부
 
+    [Header("경사면 감지")]
+    public float groundGraceTime = 0.08f;
+    public float maxSlopeAngle = 45f;
+
     [Header("기본 콜라이더")]
-    public Vector2 standingColliderSize = new Vector2(1.13f, 1.25f);
+    public Vector2 standingColliderSize = new Vector2(0.8f, 1.25f);
     public Vector2 standingColliderOffset = new Vector2(0f, 0f);
 
     [Header("웅크리기 콜라이더")]
-    public Vector2 sneakColliderSize = new Vector2(1.13f, 1.25f);
+    public Vector2 sneakColliderSize = new Vector2(0.8f, 1.25f);
     public Vector2 sneakColliderOffset = new Vector2(0f, 0.2f);
 
     [Header("런타임 콜라이더")]

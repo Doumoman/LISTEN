@@ -6,7 +6,6 @@ public class SneakMoveState : PlayerBaseState
     private const string PLAYER_SNEAKIDLE = "Player_SneakIdle";
     private const float TRANSITION_DURATION = 0.12f;
 
-    private float _groundY;
     private float _colliderT = 0f; // 0 = 서있기, 1 = 웅크리기
 
     public SneakMoveState(PlayerFSM fsm) : base(fsm) { }
@@ -18,7 +17,6 @@ public class SneakMoveState : PlayerBaseState
         fsm.Bc.size = data.standingColliderSize;
         fsm.Bc.offset = data.standingColliderOffset;
 
-        _groundY = fsm.transform.position.y + data.standingColliderOffset.y - data.standingColliderSize.y * 0.5f;
         _colliderT = 0f;
 
         PlayAnim();
@@ -26,6 +24,7 @@ public class SneakMoveState : PlayerBaseState
 
     public override void Update()
     {
+        // 엎드리기 키를 누르고 있음 -> SneakMoveState 유지
         if (data.isSneakHeld)
         {
             _colliderT = Mathf.MoveTowards(_colliderT, 1f, Time.deltaTime / TRANSITION_DURATION);
@@ -40,25 +39,28 @@ public class SneakMoveState : PlayerBaseState
                 return;
             }
         }
-
-        LerpCollider(_colliderT);
+        LerpCollider(_colliderT); // 콜라이더 부드럽게 변경
 
         // 점프 → 즉시 AirborneState
-        if (data.jumpRequested && data.isGrounded)
+        if (data.isJumpRequested && data.isGrounded)
         {
+            LerpCollider(0f);
             fsm.TransitionTo(fsm.AirborneState);
             return;
         }
 
-        // 지면 이탈 → 즉시 AirborneState
+        // 지면 이탈 → AirborneState
         if (!data.isGrounded)
         {
+            LerpCollider(0f);
             fsm.TransitionTo(fsm.AirborneState);
             return;
         }
 
         // TODO: 엎드린 상태에서 상호작용 키 누르면 물체 주움
 
+
+        // 실제 velocity 적용
         float horizontalVel = data.moveHorizontalInput.x * data.sneakSpeed;
         fsm.SetVelocity(horizontalVel, 0f);
         PlayAnim();
@@ -72,12 +74,15 @@ public class SneakMoveState : PlayerBaseState
 
     private void LerpCollider(float t)
     {
+        // 콜라이더 변경 전 하단 위치를 현재 물리 위치 기준으로 계산
+        float currentBottom = fsm.transform.position.y + fsm.Bc.offset.y - fsm.Bc.size.y * 0.5f;
+
         fsm.Bc.size = Vector2.Lerp(data.standingColliderSize, data.sneakColliderSize, t);
         fsm.Bc.offset = Vector2.Lerp(data.standingColliderOffset, data.sneakColliderOffset, t);
 
-        // _groundY 기준으로 Y를 직접 계산
+        // 콜라이더 하단이 현재 지형 위치를 유지하도록 Y 보정
         Vector3 pos = fsm.transform.position;
-        pos.y = _groundY - fsm.Bc.offset.y + fsm.Bc.size.y * 0.5f;
+        pos.y = currentBottom - fsm.Bc.offset.y + fsm.Bc.size.y * 0.5f;
         fsm.transform.position = pos;
     }
 

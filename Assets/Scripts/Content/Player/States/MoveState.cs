@@ -17,7 +17,7 @@ public class MoveState : PlayerBaseState
     public override void Update()
     {
         // 점프 입력 -> AirborneState
-        if (data.jumpRequested && data.isGrounded)
+        if (data.isJumpRequested && data.isGrounded)
         {
             fsm.TransitionTo(fsm.AirborneState);
             return;
