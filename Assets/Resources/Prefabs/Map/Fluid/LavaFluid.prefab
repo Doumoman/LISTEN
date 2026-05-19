@@ -44,7 +44,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 912febe9a9e300e47927660677c26dff, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FluidController
-  chunkPrefab: {fileID: 0}
+  fluidType: 6
+  gridPos: {x: 0, y: 0}
+  hasInitData: 0
+  chunkPrefab: {fileID: 1663002034644321703, guid: ac40df5e30b98ea4bb0ca8498e2723fe, type: 3}
+  fallbackChunkSprite: {fileID: 0}
+  fallbackChunkMaterial: {fileID: 0}
   visualRadius: 0.2
   colliderRadius: 0.1
   spawnJitter: 0.035
@@ -52,17 +57,11 @@ MonoBehaviour:
   mass: 0.12
   linearDrag: 1.4
   angularDrag: 2.5
-  restDistance: 0.36
-  interactionRadius: 0.95
-  pressureForce: 9
-  cohesionForce: 5.5
-  viscosity: 0.35
   bounce: 0.15
-  idleWobbleForce: 0.035
-  idleWobbleSpeed: 2.4
-  deformByVelocity: 1
-  stretchBySpeed: 0.11
-  maxStretch: 1.55
-  visualReturnSpeed: 12
+  useMetaballVisual: 1
+  metaballMaterial: {fileID: 2100000, guid: b30e62182f3c90843a1896b8ba1fe8e8, type: 2}
+  metaballQuadPadding: 1
+  metaballSortingLayerName: Default
+  metaballSortingOrder: 20
   waterColor: {r: 0.1, g: 0.45, b: 1, a: 0.8}
   lavaColor: {r: 1, g: 0.25, b: 0, a: 0.9}

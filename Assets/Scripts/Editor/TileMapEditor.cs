@@ -7,9 +7,21 @@ public class TileMapEditor : Editor
     private TileType _selected = TileType.Ground;
     private Vector2 _colliderSize = Vector2.one;
 
-    private static readonly string[] Names = { "Ground", "Ladder", "Pushable", "Door", "LockedBlock", "Water", "Lava" };
+    private bool _hasSelectedMovingPlatform;
+    private Vector2Int _selectedMovingPlatformGrid;
 
-    // ── Inspector ─────────────────────────────────────────────
+    private static readonly string[] Names =
+    {
+        "Ground",
+        "Ladder",
+        "Pushable",
+        "Door",
+        "LockedBlock",
+        "Water",
+        "Lava",
+        "MovingPlatform",
+        "FallingPlatform"
+    };
 
     public override void OnInspectorGUI()
     {
@@ -20,9 +32,11 @@ public class TileMapEditor : Editor
 
         int cols = 3;
         int count = Names.Length;
+
         for (int row = 0; row * cols < count; row++)
         {
             EditorGUILayout.BeginHorizontal();
+
             for (int col = 0; col < cols && row * cols + col < count; col++)
             {
                 int i = row * cols + col;
@@ -41,26 +55,48 @@ public class TileMapEditor : Editor
                 {
                     fontStyle = active ? FontStyle.Bold : FontStyle.Normal
                 };
+
                 string label = active ? $"► {Names[i]}" : Names[i];
+
                 if (GUILayout.Button(label, style, GUILayout.Height(26)))
                     _selected = t;
 
                 GUI.backgroundColor = prev;
             }
+
             EditorGUILayout.EndHorizontal();
         }
 
         EditorGUILayout.Space(6);
         EditorGUILayout.LabelField("Collider Size", EditorStyles.boldLabel);
+
         _colliderSize = EditorGUILayout.Vector2Field("W x H", _colliderSize);
         _colliderSize.x = Mathf.Max(0.1f, _colliderSize.x);
         _colliderSize.y = Mathf.Max(0.1f, _colliderSize.y);
 
         EditorGUILayout.Space(4);
-        EditorGUILayout.HelpBox(
-            $"선택: {_selected}  |  크기: {_colliderSize.x:F1} x {_colliderSize.y:F1}\n" +
-            "LMB = 페인트   RMB / Shift+LMB = 지우기",
-            MessageType.None);
+
+        if (_selected == TileType.MovingPlatform)
+        {
+            string selectedInfo = _hasSelectedMovingPlatform
+                ? $"선택된 플랫폼: {_selectedMovingPlatformGrid}"
+                : "선택된 플랫폼 없음";
+
+            EditorGUILayout.HelpBox(
+                $"선택: {_selected}  |  크기: {_colliderSize.x:F1} x {_colliderSize.y:F1}\n" +
+                $"{selectedInfo}\n\n" +
+                "LMB = MovingPlatform 생성 / 선택\n" +
+                "RMB = 선택된 MovingPlatform의 목적지 지정\n" +
+                "Shift + LMB = 지우기",
+                MessageType.Info);
+        }
+        else
+        {
+            EditorGUILayout.HelpBox(
+                $"선택: {_selected}  |  크기: {_colliderSize.x:F1} x {_colliderSize.y:F1}\n" +
+                "LMB = 페인트   RMB / Shift+LMB = 지우기",
+                MessageType.None);
+        }
 
         EditorGUILayout.Space(4);
 
@@ -70,15 +106,25 @@ public class TileMapEditor : Editor
         if (GUILayout.Button("Rebuild Fluids"))
             map.RebuildFluids();
 
+        if (GUILayout.Button("Rebuild Moving Platforms"))
+            RebuildMovingPlatforms(map);
+
+        if (GUILayout.Button("Rebuild Falling Platforms"))
+            RebuildFallingPlatforms(map);
+
         EditorGUILayout.Space(2);
 
         if (GUILayout.Button("Clear All Tiles") &&
             EditorUtility.DisplayDialog("Clear All Tiles", "모든 타일을 삭제합니다.", "삭제", "취소"))
         {
             Undo.RecordObject(target, "Clear All Tiles");
+
             for (int i = map.transform.childCount - 1; i >= 0; i--)
                 Undo.DestroyObjectImmediate(map.transform.GetChild(i).gameObject);
+
             map.ClearAll();
+            _hasSelectedMovingPlatform = false;
+
             EditorUtility.SetDirty(target);
         }
 
@@ -86,14 +132,13 @@ public class TileMapEditor : Editor
         EditorGUILayout.LabelField($"타일 수: {map.Tiles.Count}", EditorStyles.miniLabel);
     }
 
-    // ── Scene GUI ─────────────────────────────────────────────
-
     private void OnSceneGUI()
     {
         TileMapData map = (TileMapData)target;
         Event e = Event.current;
 
         int controlId = GUIUtility.GetControlID(FocusType.Passive);
+
         if (e.type == EventType.Layout)
             HandleUtility.AddDefaultControl(controlId);
 
@@ -102,7 +147,111 @@ public class TileMapEditor : Editor
 
         DrawGridOverlay(map);
         DrawCursor(map, gridPos);
+        DrawSelectedMovingPlatformGuide(map, gridPos);
 
+        if (_selected == TileType.MovingPlatform)
+            HandleMovingPlatformInput(map, e, gridPos);
+        else
+            HandleDefaultTileInput(map, e, gridPos);
+
+        SceneView.RepaintAll();
+    }
+
+    private void HandleMovingPlatformInput(TileMapData map, Event e, Vector2Int gridPos)
+    {
+        bool shiftErase = e.shift && e.button == 0;
+
+        if ((e.type == EventType.MouseDown || e.type == EventType.MouseDrag) && shiftErase)
+        {
+            Undo.RecordObject(target, "Erase Moving Platform");
+
+            TileData prevTile = map.HasTile(gridPos) ? map.GetTile(gridPos) : null;
+
+            if (map.RemoveTile(gridPos))
+            {
+                if (prevTile != null && prevTile.type == TileType.MovingPlatform)
+                {
+                    map.RemoveMovingPlatformObjects(gridPos);
+
+                    if (_hasSelectedMovingPlatform && _selectedMovingPlatformGrid == gridPos)
+                        _hasSelectedMovingPlatform = false;
+                }
+                else if (prevTile != null && prevTile.type == TileType.FallingPlatform)
+                {
+                    map.RemoveFallingPlatformObjects(gridPos);
+                }
+                else
+                {
+                    RemoveCollider(map, gridPos);
+                }
+            }
+
+            EditorUtility.SetDirty(target);
+            e.Use();
+            return;
+        }
+
+        if (e.type != EventType.MouseDown)
+            return;
+
+        if (e.button == 0)
+        {
+            Undo.RecordObject(target, "Create Or Select Moving Platform");
+
+            bool replacing = map.HasTile(gridPos);
+            TileType prevType = replacing ? map.GetTile(gridPos).type : default;
+
+            if (replacing && prevType == TileType.MovingPlatform)
+            {
+                _selectedMovingPlatformGrid = gridPos;
+                _hasSelectedMovingPlatform = true;
+
+                if (!map.HasMovingPlatformObject(gridPos))
+                    map.CreateMovingPlatform(gridPos, map.GetTile(gridPos).colliderSize);
+            }
+            else
+            {
+                if (replacing)
+                    RemoveCollider(map, gridPos);
+
+                map.AddOrReplace(gridPos, TileType.MovingPlatform, _colliderSize);
+                map.CreateMovingPlatform(gridPos, _colliderSize);
+
+                _selectedMovingPlatformGrid = gridPos;
+                _hasSelectedMovingPlatform = true;
+            }
+
+            EditorUtility.SetDirty(target);
+            e.Use();
+            return;
+        }
+
+        if (e.button == 1)
+        {
+            if (!_hasSelectedMovingPlatform)
+            {
+                Debug.LogWarning("목적지를 지정할 MovingPlatform을 먼저 좌클릭으로 선택하거나 생성하세요.");
+                e.Use();
+                return;
+            }
+
+            Undo.RecordObject(target, "Set Moving Platform Destination");
+
+            bool success = map.TrySetMovingPlatformDestination(
+                _selectedMovingPlatformGrid,
+                gridPos
+            );
+
+            if (!success)
+                Debug.LogWarning("MovingPlatform 목적지 지정에 실패했습니다.");
+
+            EditorUtility.SetDirty(target);
+            e.Use();
+        }
+    }
+
+    private void HandleDefaultTileInput(TileMapData map, Event e, Vector2Int gridPos)
+    {
         bool isErase = e.shift || e.button == 1;
 
         if ((e.type == EventType.MouseDown || e.type == EventType.MouseDrag)
@@ -112,27 +261,34 @@ public class TileMapEditor : Editor
 
             if (isErase)
             {
+                TileData prevTile = map.HasTile(gridPos) ? map.GetTile(gridPos) : null;
+
                 if (map.RemoveTile(gridPos))
-                    RemoveCollider(map, gridPos);
+                {
+                    if (prevTile != null && prevTile.type == TileType.MovingPlatform)
+                        map.RemoveMovingPlatformObjects(gridPos);
+                    else if (prevTile != null && prevTile.type == TileType.FallingPlatform)
+                        map.RemoveFallingPlatformObjects(gridPos);
+                    else
+                        RemoveCollider(map, gridPos);
+                }
             }
             else
             {
                 bool replacing = map.HasTile(gridPos);
                 TileType prevType = replacing ? map.GetTile(gridPos).type : default;
-                map.AddOrReplace(gridPos, _selected, _colliderSize);
 
-                if (!replacing || prevType != _selected)
-                    UpdateCollider(map, gridPos, _selected, _colliderSize);
+                if (replacing)
+                    RemoveCollider(map, gridPos);
+
+                map.AddOrReplace(gridPos, _selected, _colliderSize);
+                UpdateCollider(map, gridPos, _selected, _colliderSize);
             }
 
             EditorUtility.SetDirty(target);
             e.Use();
         }
-
-        SceneView.RepaintAll();
     }
-
-    // ── Gizmo helpers ─────────────────────────────────────────
 
     private void DrawCursor(TileMapData map, Vector2Int gridPos)
     {
@@ -145,6 +301,38 @@ public class TileMapEditor : Editor
             new Rect(rx, ry, _colliderSize.x, _colliderSize.y),
             new Color(c.r, c.g, c.b, 0.2f),
             c);
+    }
+
+    private void DrawSelectedMovingPlatformGuide(TileMapData map, Vector2Int hoverGridPos)
+    {
+        if (_selected != TileType.MovingPlatform)
+            return;
+
+        if (!_hasSelectedMovingPlatform)
+            return;
+
+        Transform pointA = map.GetMovingPlatformPointATransform(_selectedMovingPlatformGrid);
+        Transform pointB = map.GetMovingPlatformPointBTransform(_selectedMovingPlatformGrid);
+
+        if (pointA == null || pointB == null)
+            return;
+
+        Handles.color = Color.yellow;
+        Handles.DrawLine(pointA.position, pointB.position);
+
+        Handles.color = Color.green;
+        Handles.DrawWireDisc(pointA.position, Vector3.forward, 0.25f);
+        Handles.Label(pointA.position + Vector3.up * 0.25f, "Start A");
+
+        Handles.color = Color.red;
+        Handles.DrawWireDisc(pointB.position, Vector3.forward, 0.25f);
+        Handles.Label(pointB.position + Vector3.up * 0.25f, "Destination B");
+
+        Vector3 hoverWorld = map.GridToWorld(hoverGridPos);
+
+        Handles.color = new Color(1f, 0.3f, 0.3f, 0.8f);
+        Handles.DrawDottedLine(pointA.position, hoverWorld, 4f);
+        Handles.DrawWireDisc(hoverWorld, Vector3.forward, 0.2f);
     }
 
     private void DrawGridOverlay(TileMapData map)
@@ -164,13 +352,13 @@ public class TileMapEditor : Editor
         int y1 = Mathf.CeilToInt(camPos.y + h - origin.y) + 1;
 
         Handles.color = new Color(1f, 1f, 1f, 0.07f);
+
         for (int x = x0; x <= x1; x++)
             Handles.DrawLine(origin + new Vector3(x, y0), origin + new Vector3(x, y1));
+
         for (int y = y0; y <= y1; y++)
             Handles.DrawLine(origin + new Vector3(x0, y), origin + new Vector3(x1, y));
     }
-
-    // ── Collider management ───────────────────────────────────
 
     private Transform GetOrCreateLayerParent(TileMapData map, TileType type, bool useUndo = true)
     {
@@ -178,17 +366,21 @@ public class TileMapEditor : Editor
         Transform existing = map.transform.Find(parentName);
         if (existing != null) return existing;
 
-        var parentGO = new GameObject(parentName);
+        GameObject parentGO = new GameObject(parentName);
+
         if (useUndo)
             Undo.RegisterCreatedObjectUndo(parentGO, "Create Layer Parent");
+
         parentGO.transform.SetParent(map.transform, false);
 
         int layer = LayerMask.NameToLayer(TileMapData.LayerNames[type]);
-        if (layer >= 0) parentGO.layer = layer;
+
+        if (layer >= 0)
+            parentGO.layer = layer;
 
         if (type == TileType.Ground)
         {
-            var rb = parentGO.AddComponent<Rigidbody2D>();
+            Rigidbody2D rb = parentGO.AddComponent<Rigidbody2D>();
             rb.bodyType = RigidbodyType2D.Static;
             parentGO.AddComponent<CompositeCollider2D>();
         }
@@ -200,17 +392,28 @@ public class TileMapEditor : Editor
     {
         RemoveCollider(map, pos);
 
+        if (type == TileType.MovingPlatform)
+        {
+            map.CreateMovingPlatform(pos, colliderSize);
+            return;
+        }
+
+        if (type == TileType.FallingPlatform)
+        {
+            map.CreateFallingPlatform(pos, colliderSize);
+            return;
+        }
+
         Transform layerParent = GetOrCreateLayerParent(map, type);
 
         GameObject go = new GameObject(ColliderName(pos));
         Undo.RegisterCreatedObjectUndo(go, "Create Tile Collider");
 
         go.transform.SetParent(layerParent);
-        // naming fix: transform을 corner에 배치해 Tile_x_y 이름과 position이 일치하도록
         go.transform.position = map.GridToWorld(pos) - new Vector3(0.5f, 0.5f, 0f);
 
         BoxCollider2D box = go.AddComponent<BoxCollider2D>();
-        box.offset = new Vector2(0.5f, 0.5f);  // collider center = cell 중앙 유지
+        box.offset = new Vector2(0.5f, 0.5f);
         box.size = colliderSize;
 
         if (type == TileType.Water || type == TileType.Lava || type == TileType.Ladder)
@@ -233,42 +436,59 @@ public class TileMapEditor : Editor
 
     private void RemoveCollider(TileMapData map, Vector2Int pos)
     {
+        map.RemoveMovingPlatformObjects(pos);
+        map.RemoveFallingPlatformObjects(pos);
+
         string name = ColliderName(pos);
+
         foreach (TileType type in System.Enum.GetValues(typeof(TileType)))
         {
+            if (type == TileType.MovingPlatform || type == TileType.FallingPlatform)
+                continue;
+
             Transform layerParent = map.transform.Find(type.ToString());
             if (layerParent == null) continue;
+
             Transform found = layerParent.Find(name);
+
             if (found != null)
             {
                 Undo.DestroyObjectImmediate(found.gameObject);
                 return;
             }
         }
-        // 레거시: 레이어 부모 없이 직접 붙어있던 콜라이더 처리
+
         Transform legacy = map.transform.Find(name);
+
         if (legacy != null)
             Undo.DestroyObjectImmediate(legacy.gameObject);
     }
 
     private void RebuildColliders(TileMapData map)
     {
-        for (int i = map.transform.childCount - 1; i >= 0; i--)
-            DestroyImmediate(map.transform.GetChild(i).gameObject);
+        ClearTileColliderParents(map);
 
         foreach (TileType type in System.Enum.GetValues(typeof(TileType)))
-            GetOrCreateLayerParent(map, type, useUndo: false);
-
-        foreach (var tile in map.Tiles)
         {
+            if (type == TileType.MovingPlatform || type == TileType.FallingPlatform)
+                continue;
+
+            GetOrCreateLayerParent(map, type, useUndo: false);
+        }
+
+        foreach (TileData tile in map.Tiles)
+        {
+            if (tile.type == TileType.MovingPlatform || tile.type == TileType.FallingPlatform)
+                continue;
+
             Transform layerParent = map.transform.Find(tile.type.ToString());
-            var go = new GameObject(ColliderName(tile.gridPos));
+
+            GameObject go = new GameObject(ColliderName(tile.gridPos));
             go.transform.SetParent(layerParent);
-            // naming fix: transform을 corner에 배치
             go.transform.position = map.GridToWorld(tile.gridPos) - new Vector3(0.5f, 0.5f, 0f);
 
-            var box = go.AddComponent<BoxCollider2D>();
-            box.offset = new Vector2(0.5f, 0.5f);  // collider center = cell 중앙 유지
+            BoxCollider2D box = go.AddComponent<BoxCollider2D>();
+            box.offset = new Vector2(0.5f, 0.5f);
             box.size = tile.colliderSize;
 
             if (tile.type == TileType.Water || tile.type == TileType.Lava || tile.type == TileType.Ladder)
@@ -281,10 +501,54 @@ public class TileMapEditor : Editor
             }
 
             int layer = LayerMask.NameToLayer(TileMapData.LayerNames[tile.type]);
-            if (layer >= 0) go.layer = layer;
+
+            if (layer >= 0)
+                go.layer = layer;
         }
+
         EditorUtility.SetDirty(map);
     }
 
-    private static string ColliderName(Vector2Int pos) => $"Tile_{pos.x}_{pos.y}";
+    private void RebuildMovingPlatforms(TileMapData map)
+    {
+        foreach (TileData tile in map.Tiles)
+        {
+            if (tile.type != TileType.MovingPlatform)
+                continue;
+
+            map.CreateMovingPlatform(tile.gridPos, tile.colliderSize);
+        }
+
+        EditorUtility.SetDirty(map);
+    }
+
+    private void RebuildFallingPlatforms(TileMapData map)
+    {
+        foreach (TileData tile in map.Tiles)
+        {
+            if (tile.type != TileType.FallingPlatform)
+                continue;
+
+            map.CreateFallingPlatform(tile.gridPos, tile.colliderSize);
+        }
+
+        EditorUtility.SetDirty(map);
+    }
+
+    private void ClearTileColliderParents(TileMapData map)
+    {
+        foreach (TileType type in System.Enum.GetValues(typeof(TileType)))
+        {
+            if (type == TileType.MovingPlatform || type == TileType.FallingPlatform)
+                continue;
+
+            Transform parent = map.transform.Find(type.ToString());
+
+            if (parent != null)
+                DestroyImmediate(parent.gameObject);
+        }
+    }
+
+    private static string ColliderName(Vector2Int pos)
+        => $"Tile_{pos.x}_{pos.y}";
 }
