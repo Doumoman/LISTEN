@@ -6,10 +6,16 @@ public class MoveState : PlayerBaseState
 
     private const string PLAYER_MOVE = "Player_Move";
     private const string PLAYER_IDLE = "Player_Idle";
-    private const float CROSS_FADE_DURATION = 0.1f;
 
     public override void Enter()
     {
+        // Jump buffer: 착지 직전에 점프 입력이 있었으면 즉시 점프
+        if (fsm.ConsumeJumpBuffer())
+        {
+            data.isJumpRequested = true;
+            fsm.TransitionTo(fsm.AirborneState);
+            return;
+        }
         fsm.SetVelocity(0f, 0f);
         PlayMoveAnim();
     }

@@ -25,12 +25,23 @@ public class PlayerFSM : MonoBehaviour
     private InputManager _inputManager;
 
     [Header("Physics")]
-    private Vector2 _velocity; // 속도
+    [SerializeField] private Vector2 _velocity; // 속도
     public Vector2 lastDir; // 마지막 방향
 
     private readonly float SkinWidth = 0.02f; // 콜라이더 겉을 감싸는 얇은 막, 충돌 버그 방지
-    private readonly int RayCount = 3;
+    private readonly int RayCount = 3; // 플레이어의 콜라이더를 RayCount로 등분해서 Ray를 쏜다
+
+    // 각종 타이머들
     private float _groundedGraceTimer = 0f;
+    private float _jumpBufferTimer = 0f;
+
+    [Header("Ledge")]
+    public bool ledgeDetected;
+    public bool ledgeGrabReady;
+    public Vector2 ledgeBeginPos;
+    private bool _canGrabLedge = true;
+    public bool CanGrabLedge => _canGrabLedge;
+    private LedgeDetection _ledgeDetection;
 
     private void Awake()
     {
@@ -40,6 +51,8 @@ public class PlayerFSM : MonoBehaviour
 
         Rb.bodyType = RigidbodyType2D.Kinematic;
         Rb.gravityScale = 0f;
+
+        _ledgeDetection = GetComponentInChildren<LedgeDetection>();
     }
 
     private void Start()
@@ -89,9 +102,9 @@ public class PlayerFSM : MonoBehaviour
         // ㅡㅡㅡ Layer 감지 함수들 ㅡㅡㅡ
         CheckGround();
         CheckLadder();
-        CheckHanger();
+        CheckLedge();
         CheckPushable();
-        ApplyLayerPriority(); // 우선 순위 결정
+        ApplyLayerPriority(); // 레이어 우선 순위 결정
 
         // lastDir 갱신 및 스프라이트 좌우 플리핑 (HangState, LadderState 중에는 방향 고정)
         if (_playerData.moveHorizontalInput != Vector2.zero && _currentState != HangState && _currentState != LadderState)
@@ -110,6 +123,20 @@ public class PlayerFSM : MonoBehaviour
     {
         // 1프레임 소비 플래그 초기화
         _playerData.isJumpRequested = false;
+
+        if (_jumpBufferTimer > 0f)
+            _jumpBufferTimer -= Time.deltaTime;
+    }
+
+    // ㅡㅡ 점프 버퍼 소비 ㅡㅡ
+    public bool ConsumeJumpBuffer()
+    {
+        if (_jumpBufferTimer > 0f)
+        {
+            _jumpBufferTimer = 0f;
+            return true;
+        }
+        return false;
     }
 
     // ㅡㅡ 상태 전이 함수 ㅡㅡ
@@ -138,8 +165,10 @@ public class PlayerFSM : MonoBehaviour
     private void ApplyMovement()
     {
         Vector2 delta = _velocity * Time.deltaTime;
+
         delta = ResolveHorizontal(delta); // 좌우 충돌 보정
         delta = ResolveVertical(delta); // 상하 충돌 보정
+
         transform.position += (Vector3)delta;
     }
 
@@ -247,30 +276,19 @@ public class PlayerFSM : MonoBehaviour
         _playerData.isNearLadder = _playerData.nearLadderCollider != null;
     }
 
-    private void CheckHanger()
+    public void CheckLedge()
     {
-        float dir = lastDir.x;
-        float rayLength = SkinWidth + 0.05f;
         Vector2 center = (Vector2)transform.position + Bc.offset;
-        Vector2 origin = center + Vector2.right * (dir * (Bc.size.x * 0.5f - SkinWidth));
-
-        RaycastHit2D hit = Physics2D.Raycast(origin, Vector2.right * dir, rayLength, _playerData.groundLayer);
-        if (hit.collider != null)
-        {
-            float tileCenterX = hit.point.x + dir * 0.5f;
-            float tileTopY    = Mathf.Ceil(hit.point.y + 0.01f);
-            Vector2 aboveCenter = new Vector2(tileCenterX, tileTopY + 0.5f);
-
-            if (Physics2D.OverlapCircle(aboveCenter, 0.4f, _playerData.collisionLayer) == null)
-            {
-                _playerData.nearHangerCollider = hit.collider;
-                _playerData.isNearHanger = true;
-                return;
-            }
-        }
-        _playerData.nearHangerCollider = null;
-        _playerData.isNearHanger = false;
+        float halfW = Bc.size.x * 0.5f - SkinWidth;
     }
+
+    public void CaptureLedge()
+    {
+        ledgeBeginPos = _ledgeDetection.LedgePosition;
+        _canGrabLedge = false;
+    }
+
+    public void ResetCanGrabLedge() => _canGrabLedge = true;
 
     private void CheckPushable()
     {
@@ -317,6 +335,7 @@ public class PlayerFSM : MonoBehaviour
     {
         _playerData.isJumpRequested = true;
         _playerData.isJumpHeld = true;
+        _jumpBufferTimer = _playerData.jumpBufferTime;
     }
     private void HandleJumpReleased() => _playerData.isJumpHeld = false;
     private void HandleSneak() => _playerData.isSneakHeld = true;

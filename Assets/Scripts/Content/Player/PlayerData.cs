@@ -16,13 +16,17 @@ public class PlayerData
     public float gravity = -70f; // 실제 중력
     public float maxFallSpeed = -20f; // 낙하 최고 스피드
     public float groundCheckDistance = 0.05f; // 커질수록 ground 감지하는 ray가 길어짐
+    public float coyoteTime = 0.1f; // 낙하 후 점프 허용 시간
+    public float jumpBufferTime = 0.15f; // 착지 직전 점프 입력 유효 시간
+
+    [Header("매달리기")]
+    public Vector2 ledgeOffset;
 
     [Header("Layer 감지")]
     public LayerMask collisionLayer; // 충돌 처리 대상 레이어 (Ground, Pushable, ... )
     public LayerMask groundLayer;
     public LayerMask ladderLayer;
     public LayerMask pushableLayer;
-    public float hangYRange = 0.3f; // 매달리기 허용 Y 거리
 
     [Header("런타임 플래그")]
     public Vector2 moveHorizontalInput; // 입력받은 좌우 이동 방향
@@ -34,7 +38,6 @@ public class PlayerData
     public bool isGrounded; // 바닥에 있는지
     public bool isPushing; // 물체를 미는 중인지
     public bool isNearLadder; // 사다리 감지
-    public bool isNearHanger; // 행거 감지
     public bool isHolding; // 물체를 들고 있는지
     public bool isDead; // 플레이어 사망 여부
 

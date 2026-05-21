@@ -6,6 +6,7 @@ public class AirborneState : PlayerBaseState
 
     private float jumpHoldTime = 0f;
     private bool isJumping = false;
+    private float coyoteTimer = 0f;
 
     public AirborneState(PlayerFSM fsm) : base(fsm) { }
 
@@ -17,11 +18,13 @@ public class AirborneState : PlayerBaseState
         if (data.isJumpRequested)
         {
             isJumping = true;
+            coyoteTimer = 0f;
             fsm.SetVelocityY(data.jumpSpeed);
         }
         else
         {
             isJumping = false;
+            coyoteTimer = data.coyoteTime;
         }
     }
 
@@ -29,20 +32,35 @@ public class AirborneState : PlayerBaseState
     {
         Vector2 vel = fsm.GetVelocity();
 
+        // Coyote jump: 낙하로 진입 후 coyoteTime 안에 점프 입력 시 점프 허용
+        if (!isJumping && coyoteTimer > 0f)
+        {
+            coyoteTimer -= Time.deltaTime;
+            if (data.isJumpRequested)
+            {
+                isJumping = true;
+                coyoteTimer = 0f;
+                jumpHoldTime = 0f;
+                fsm.SetVelocityY(data.jumpSpeed);
+            }
+        }
+
         float effectiveGravity;
         if (isJumping && data.isJumpHeld && jumpHoldTime < data.jumpMaxHoldTime) // 짧게 점프했을 경우
         {
             effectiveGravity = data.gravity * data.jumpHoldGravityScale;
             jumpHoldTime += Time.deltaTime;
         }
-        else // 낙하
+        else // 최대 점프 거리에서 낙하
         {
             isJumping = false;
             effectiveGravity = data.gravity;
         }
 
         if (vel.y < 0f)
+        {
             data.isFalling = true;
+        }
 
         vel.y += effectiveGravity * Time.deltaTime;
         vel.y = Mathf.Max(vel.y, data.maxFallSpeed);
@@ -65,16 +83,12 @@ public class AirborneState : PlayerBaseState
             return;
         }
 
-        // Hangable 감지 → 낙하 중 + 플레이어 Y가 타일 Y보다 크고 차이가 hangYRange 이내면 매달리기
-        if (data.isFalling && data.isNearHanger)
+        // Ledge 감지 → grab 타이밍 도달 시 매달리기
+        if (fsm.ledgeGrabReady && fsm.CanGrabLedge)
         {
-            float playerY = fsm.transform.position.y + fsm.Bc.offset.y;
-            float hangerY = data.nearHangerCollider.bounds.center.y;
-            if (playerY > hangerY && (playerY - hangerY) < data.hangYRange)
-            {
-                fsm.TransitionTo(fsm.HangState);
-                return;
-            }
+            fsm.CaptureLedge();
+            fsm.TransitionTo(fsm.HangState);
+            return;
         }
 
         PlayAnim();
