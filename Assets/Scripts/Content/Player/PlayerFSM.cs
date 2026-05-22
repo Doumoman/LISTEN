@@ -35,14 +35,6 @@ public class PlayerFSM : MonoBehaviour
     private float _groundedGraceTimer = 0f;
     private float _jumpBufferTimer = 0f;
 
-    [Header("Ledge")]
-    public bool ledgeDetected;
-    public bool ledgeGrabReady;
-    public Vector2 ledgeBeginPos;
-    private bool _canGrabLedge = true;
-    public bool CanGrabLedge => _canGrabLedge;
-    private LedgeDetection _ledgeDetection;
-
     private void Awake()
     {
         Anim = GetComponent<Animator>();
@@ -51,8 +43,6 @@ public class PlayerFSM : MonoBehaviour
 
         Rb.bodyType = RigidbodyType2D.Kinematic;
         Rb.gravityScale = 0f;
-
-        _ledgeDetection = GetComponentInChildren<LedgeDetection>();
     }
 
     private void Start()
@@ -102,7 +92,6 @@ public class PlayerFSM : MonoBehaviour
         // ㅡㅡㅡ Layer 감지 함수들 ㅡㅡㅡ
         CheckGround();
         CheckLadder();
-        CheckLedge();
         CheckPushable();
         ApplyLayerPriority(); // 레이어 우선 순위 결정
 
@@ -275,20 +264,6 @@ public class PlayerFSM : MonoBehaviour
         _playerData.nearLadderCollider = Physics2D.OverlapPoint(center, _playerData.ladderLayer);
         _playerData.isNearLadder = _playerData.nearLadderCollider != null;
     }
-
-    public void CheckLedge()
-    {
-        Vector2 center = (Vector2)transform.position + Bc.offset;
-        float halfW = Bc.size.x * 0.5f - SkinWidth;
-    }
-
-    public void CaptureLedge()
-    {
-        ledgeBeginPos = _ledgeDetection.LedgePosition;
-        _canGrabLedge = false;
-    }
-
-    public void ResetCanGrabLedge() => _canGrabLedge = true;
 
     private void CheckPushable()
     {

@@ -1,5 +1,36 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!1 &2021761523383127956
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5144133758780038983}
+  m_Layer: 31
+  m_Name: Wall Check
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &5144133758780038983
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2021761523383127956}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0.2, y: -0.3, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 967656970958458871}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &6816418336615385229
 GameObject:
   m_ObjectHideFlags: 0
@@ -35,7 +66,9 @@ Transform:
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children: []
+  m_Children:
+  - {fileID: 5144133758780038983}
+  - {fileID: 7203101379789456188}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!212 &8838931982091366710
@@ -122,7 +155,7 @@ Rigidbody2D:
     m_Bits: 0
   m_Interpolate: 0
   m_SleepingMode: 1
-  m_CollisionDetection: 1
+  m_CollisionDetection: 0
   m_Constraints: 0
 --- !u!61 &8512066930578791605
 BoxCollider2D:
@@ -158,7 +191,7 @@ BoxCollider2D:
   m_UsedByEffector: 0
   m_CompositeOperation: 0
   m_CompositeOrder: 0
-  m_Offset: {x: 0.049085855, y: -0.15644279}
+  m_Offset: {x: 0.049085855, y: -0.07653302}
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0.5, y: 0.5}
@@ -168,7 +201,7 @@ BoxCollider2D:
     drawMode: 0
     adaptiveTiling: 0
   m_AutoTiling: 0
-  m_Size: {x: 0.8343886, y: 0.9673392}
+  m_Size: {x: 0.8343886, y: 1.1271588}
   m_EdgeRadius: 0
 --- !u!95 &6561582771071760063
 Animator:
@@ -217,7 +250,10 @@ MonoBehaviour:
     groundCheckDistance: 0.05
     coyoteTime: 0.1
     jumpBufferTime: 0.15
-    ledgeOffset: {x: 0.3, y: 0.1}
+    ledgeOffset: {x: 0.41, y: 0}
+    ledgeCornerPos: {x: 0, y: 0}
+    ledgeGrabDir: 0
+    isLedgeGrabbed: 0
     collisionLayer:
       serializedVersion: 2
       m_Bits: 640
@@ -235,6 +271,7 @@ MonoBehaviour:
     isJumpRequested: 0
     isJumpHeld: 0
     isFalling: 0
+    isHanging: 0
     isSneakHeld: 0
     isGrounded: 0
     isPushing: 0
@@ -252,9 +289,6 @@ MonoBehaviour:
     nearPushableCollider: {fileID: 0}
   _velocity: {x: 0, y: 0}
   lastDir: {x: 0, y: 0}
-  ledgeDetected: 0
-  ledgeGrabReady: 0
-  ledgeBeginPos: {x: 0, y: 0}
 --- !u!114 &3107422294581001006
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -283,8 +317,44 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f24436f203e47c04b8cb6a2ae27ae58d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::LedgeDetection
-  _rayDistance: 0.1
-  _midRayRatio: 0.5
-  _groundLayer:
+  rayDistance: 0.3
+  downRayInset: 0.05
+  downRayPadding: 0.2
+  wallCheck: {fileID: 5144133758780038983}
+  ledgeCheck: {fileID: 7203101379789456188}
+  groundLayer:
     serializedVersion: 2
     m_Bits: 128
+  isTouchingWall: 0
+  isTouchingLedge: 0
+--- !u!1 &6820252846193895475
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7203101379789456188}
+  m_Layer: 0
+  m_Name: Ledge Check
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &7203101379789456188
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6820252846193895475}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0.2, y: 0.5, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 967656970958458871}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}

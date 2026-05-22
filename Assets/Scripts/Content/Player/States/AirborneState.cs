@@ -83,10 +83,10 @@ public class AirborneState : PlayerBaseState
             return;
         }
 
-        // Ledge 감지 → grab 타이밍 도달 시 매달리기
-        if (fsm.ledgeGrabReady && fsm.CanGrabLedge)
+        // 낙하 중이고 LedgeDetection이 모서리를 감지했을 때 → HangState
+        if (data.isLedgeGrabbed && data.isFalling)
         {
-            fsm.CaptureLedge();
+            data.isLedgeGrabbed = false;
             fsm.TransitionTo(fsm.HangState);
             return;
         }

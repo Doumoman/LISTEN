@@ -21,6 +21,9 @@ public class PlayerData
 
     [Header("매달리기")]
     public Vector2 ledgeOffset;
+    public Vector2 ledgeCornerPos;
+    public float ledgeGrabDir; // 레지 감지 순간의 방향 (+1 or -1)
+    public bool isLedgeGrabbed; // 매달려야 한다고 알려주는 1회성 플래그
 
     [Header("Layer 감지")]
     public LayerMask collisionLayer; // 충돌 처리 대상 레이어 (Ground, Pushable, ... )
@@ -34,6 +37,7 @@ public class PlayerData
     public bool isJumpRequested; // 점프 요구
     public bool isJumpHeld; // 점프 키 홀드 중
     public bool isFalling; // 낙하 중인지
+    public bool isHanging; // 매달리기 중인지
     public bool isSneakHeld; // 엎드리기 키 홀드 중
     public bool isGrounded; // 바닥에 있는지
     public bool isPushing; // 물체를 미는 중인지

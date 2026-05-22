@@ -2,96 +2,80 @@
 
 public class LedgeDetection : MonoBehaviour
 {
-    [SerializeField] private float _rayDistance = 0.15f;
-    // 0 = top과 동일, 1 = collider center와 동일 (기본 0.5 = top~center 중간)
-    [SerializeField] private float _midRayRatio = 0.5f;
-    [SerializeField] private LayerMask _groundLayer;
+    [SerializeField] private float rayDistance = 0.15f;
+    [SerializeField] private float downRayInset = 0.05f;   // 하향 ray 시작점의 벽 내부 진입 오프셋
+    [SerializeField] private float downRayPadding = 0.2f;  // 하향 ray 길이 여유분
 
-    private PlayerFSM _player;
+    [SerializeField] private Transform wallCheck;
+    [SerializeField] private Transform ledgeCheck;
+    [SerializeField] private LayerMask groundLayer;
 
-    private Vector2 _topOrigin;
-    private Vector2 _midOrigin;
-    private Vector2 _ledgePosition;
-    public Vector2 LedgePosition => _ledgePosition;
+    [SerializeField] private bool isTouchingWall;
+    [SerializeField] private bool isTouchingLedge;
 
-    private int _nearLedgeFrameCount;
-    [SerializeField] private int _nearLedgeWindowFrames = 3;
+    private PlayerFSM playerFSM;
+
+    private Vector2 downRayStart;
 
     private void Awake()
     {
-        _player = GetComponent<PlayerFSM>();
+        playerFSM = GetComponent<PlayerFSM>();
     }
 
     private void Update()
     {
-        BoxCollider2D bc = _player.Bc;
-        Vector2 center = (Vector2)_player.transform.position + bc.offset;
-        float halfW = bc.size.x * 0.5f;
-        float halfH = bc.size.y * 0.5f;
-        float faceDir = Mathf.Sign(_player.lastDir.x);
-        float originX = center.x + faceDir * halfW;
+        CheckLedge();
+    }
 
-        // 최상단 ray: collider top
-        _topOrigin.x = originX;
-        _topOrigin.y = center.y + halfH;
+    private void CheckLedge()
+    {
+        if (playerFSM.PlayerData.isHanging) return;
 
-        // 중단 ray: top~center 사이 (_midRayRatio 비율)
-        _midOrigin.x = originX;
-        _midOrigin.y = center.y + halfH * (1f - _midRayRatio);
+        Vector2 rayDirection = new Vector2(Mathf.Sign(playerFSM.lastDir.x), 0f);
 
-        Vector2 rayDir = Vector2.right * faceDir;
-        RaycastHit2D topHit = Physics2D.Raycast(_topOrigin, rayDir, _rayDistance, _groundLayer);
-        RaycastHit2D midHit = Physics2D.Raycast(_midOrigin, rayDir, _rayDistance, _groundLayer);
+        // wallHit의 hitPoint의 x좌표는 모서리의 x좌표로 확정지을 수 있음
+        // 모서리의 y좌표는 확정된 x좌표를 가지고 위에서 아래로 ray를 쏘면 구할 수 있음
+        RaycastHit2D wallHit = Physics2D.Raycast(wallCheck.position, rayDirection, rayDistance, groundLayer);
+        RaycastHit2D ledgeHit = Physics2D.Raycast(ledgeCheck.position, rayDirection, rayDistance, groundLayer);
 
-        // topRay는 감지 x, midRay는 감지 o, Ledge가 있다고 판단
-        bool nearLedge = topHit.collider == null && midHit.collider != null;
-        _player.ledgeDetected = nearLedge;
+        isTouchingWall = wallHit.collider != null ? true : false;
+        isTouchingLedge = ledgeHit.collider != null ? true : false;
 
-        if (nearLedge)
-            _nearLedgeFrameCount = _nearLedgeWindowFrames;
-        else if (_nearLedgeFrameCount > 0)
-            _nearLedgeFrameCount--;
-
-        // Grab 타이밍: nearLedge 윈도우 내에 topRay가 감지되면 grab
-        if (_nearLedgeFrameCount > 0 && topHit.collider != null)
+        if (isTouchingWall && !isTouchingLedge && playerFSM.PlayerData.isFalling)
         {
-            _player.ledgeGrabReady = true;
-            // 하향 ray로 실제 레지 윗면 Y 계산 (topHit.point.y는 플레이어 top Y라 얇은 레지에서 오차 발생)
-            Vector2 downOrigin = new Vector2(topHit.point.x - faceDir * 0.02f, _topOrigin.y + 0.2f);
-            RaycastHit2D surfaceHit = Physics2D.Raycast(downOrigin, Vector2.down, halfH * 2f + 0.3f, _groundLayer);
-            _ledgePosition.x = topHit.point.x;
-            _ledgePosition.y = surfaceHit.collider != null ? surfaceHit.point.y : topHit.point.y;
+            Debug.Log("Ledge 존재!");
+
+            downRayStart = new Vector2(wallHit.point.x + (rayDirection.x * downRayInset), ledgeCheck.position.y); // 벽 표면에서 살짝 들어간 부분부터 시작
+            float downRayLength = ledgeCheck.position.y - wallCheck.position.y + downRayPadding; // 머리 -> 가슴 길이보다 조금 더 길게
+
+            RaycastHit2D cornerHit = Physics2D.Raycast(downRayStart, Vector2.down, downRayLength, groundLayer);
+
+            if(cornerHit.collider != null)
+            {
+                Vector2 cornerPosition = new Vector2(wallHit.point.x, cornerHit.point.y);
+                GrapLedge(cornerPosition);
+            }
         }
-        else
-        {
-            _player.ledgeGrabReady = false;
-        }
+    }
+
+    private void GrapLedge(Vector2 cornerPos)
+    {
+        playerFSM.PlayerData.ledgeCornerPos = cornerPos;
+        playerFSM.PlayerData.ledgeGrabDir = Mathf.Sign(playerFSM.lastDir.x);
+        playerFSM.PlayerData.isLedgeGrabbed = true;
+
+        playerFSM.SetVelocity(0f, 0f);
     }
 
     private void OnDrawGizmos()
     {
-        if (_player == null || _player.Bc == null) return;
+        if (wallCheck == null || ledgeCheck == null || playerFSM == null) return;
 
-        BoxCollider2D bc = _player.Bc;
-        Vector2 center = (Vector2)_player.transform.position + bc.offset;
-        float halfW = bc.size.x * 0.5f;
-        float halfH = bc.size.y * 0.5f;
-        float faceDir = Mathf.Sign(_player.lastDir.x);
-        float originX = center.x + faceDir * halfW;
+        Vector2 dir = new Vector2(Mathf.Sign(playerFSM.lastDir.x), 0f);
+        Gizmos.color = isTouchingWall ? Color.red : Color.green;
+        Gizmos.DrawLine(wallCheck.position, (Vector2)wallCheck.position + dir * rayDistance);
 
-        Gizmos.color = Color.yellow;
-        Gizmos.DrawLine(new Vector2(originX, center.y + halfH),
-                        new Vector2(originX + faceDir * _rayDistance, center.y + halfH));
-
-        Gizmos.color = Color.green;
-        float midY = center.y + halfH * (1f - _midRayRatio);
-        Gizmos.DrawLine(new Vector2(originX, midY),
-                        new Vector2(originX + faceDir * _rayDistance, midY));
-
-        if (_player.ledgeGrabReady)
-        {
-            Gizmos.color = Color.red;
-            Gizmos.DrawWireSphere(_ledgePosition, 0.1f);
-        }
+        Gizmos.color = isTouchingLedge ? Color.red : Color.cyan;
+        Gizmos.DrawLine(ledgeCheck.position, (Vector2)ledgeCheck.position + dir * rayDistance);
     }
 }
