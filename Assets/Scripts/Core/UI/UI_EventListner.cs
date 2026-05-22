@@ -30,6 +30,15 @@ public class UI_EventListener : MonoBehaviour
 
     private void HandleGamePlayMenu()
     {
+        UI_Scene sceneUI = SingletonManagers.UI.CurrentSceneUI;
+
+        // 메인 메뉴 같은 UI 전용 화면에서는 GamePlay Menu 토글을 사용하지 않는다.
+        if (sceneUI != null && sceneUI.KeepUIInputMode)
+        {
+            SingletonManagers.Input.SetInputModeUI(true);
+            return;
+        }
+
         int currentPopupCount = SingletonManagers.UI.PopupCount;
         if (currentPopupCount > 0)
         {
@@ -43,7 +52,7 @@ public class UI_EventListener : MonoBehaviour
         else
         {
             SingletonManagers.Input.SetInputModeUI(true);
-            StartCoroutine(IgnoreInputForMoment()); // 한 프레임동안 남아있는 입력 방지
+            StartCoroutine(IgnoreInputForMoment());
         }
     }
 
@@ -73,15 +82,36 @@ public class UI_EventListener : MonoBehaviour
         if (_ignoreInput) return;
 
         var popup = SingletonManagers.UI.GetTopPopup();
+
         if (popup != null)
         {
             popup.OnCancel();
         }
+        else
+        {
+            UI_Scene sceneUI = SingletonManagers.UI.CurrentSceneUI;
+
+            // 메인 메뉴 같은 UI 전용 화면에서는 ESC로 UI 모드를 끄지 않는다.
+            if (sceneUI != null && sceneUI.KeepUIInputMode)
+            {
+                SingletonManagers.Input.SetInputModeUI(true);
+                return;
+            }
+        }
 
         if (SingletonManagers.UI.PopupCount == 0)
         {
-            SingletonManagers.Input.SetInputModeUI(false);
-            Time.timeScale = 1f;
+            UI_Scene sceneUI = SingletonManagers.UI.CurrentSceneUI;
+
+            if (sceneUI != null && sceneUI.KeepUIInputMode)
+            {
+                SingletonManagers.Input.SetInputModeUI(true);
+            }
+            else
+            {
+                SingletonManagers.Input.SetInputModeUI(false);
+                Time.timeScale = 1f;
+            }
         }
     }
 }

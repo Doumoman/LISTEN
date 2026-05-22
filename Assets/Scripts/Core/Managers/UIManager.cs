@@ -7,7 +7,12 @@ public class UIManager : IManager
     private int _order = 10;
     private Stack<UI_Popup> _popupStack = new Stack<UI_Popup>();
     private UI_Scene _sceneUI = null;
+    public UI_Scene CurrentSceneUI => _sceneUI;
     private UI_Popup_Fade _fade = null;
+    public void RegisterSceneUI(UI_Scene sceneUI)
+    {
+        _sceneUI = sceneUI;
+    }
     private const int FadeSortOrder = 9999;
 
     public int PopupCount => _popupStack.Count;
