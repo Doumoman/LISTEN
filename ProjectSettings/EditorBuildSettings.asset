@@ -6,11 +6,11 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/Scenes/MainLobbyScene.unity
-    guid: b00289868effe8c439a0d9eafd1ccd91
+    path: Assets/Scenes/Main/Main.unity
+    guid: f1aacfca45028654b9ea8f46f2595877
   - enabled: 1
-    path: Assets/Scenes/Scene_Chapter0.unity
-    guid: 2b365df47894f434db2245b809a2990d
+    path: Assets/Scenes/Tutorial/Sea.unity
+    guid: 59347e11042624a40abe72e808e6d042
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 22a171633c818624ea64273545116c5d, type: 3}
   m_UseUCBPForAssetBundles: 0
