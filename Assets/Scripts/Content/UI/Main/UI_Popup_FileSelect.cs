@@ -107,7 +107,32 @@ public class UI_Popup_FileSelect : UI_Popup
         yield return StartCoroutine(DisappearDownSequence(false));
         _isHiddenForStageSelect = true;
     }
+    public void HideImmediateForStageSelect()
+    {
+        _isHiddenForStageSelect = true;
 
+        if (_canvasGroup == null)
+        {
+            _canvasGroup = GetComponent<CanvasGroup>();
+            if (_canvasGroup == null)
+                _canvasGroup = gameObject.AddComponent<CanvasGroup>();
+        }
+
+        if (_rect == null)
+        {
+            _rect = GetComponent<RectTransform>();
+        }
+
+        if (_rect != null)
+        {
+            _originPos = _rect.anchoredPosition;
+            _rect.anchoredPosition = _originPos + Vector2.down * Mathf.Abs(_startYOffset);
+        }
+
+        _canvasGroup.alpha = 0f;
+        _canvasGroup.interactable = false;
+        _canvasGroup.blocksRaycasts = false;
+    }
     public void ShowAgainFromStageSelect()
     {
         if (!_isHiddenForStageSelect)

@@ -596,7 +596,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 0.392}
+  m_Color: {r: 0.6037736, g: 0.544938, b: 0.3503026, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -2751,6 +2751,8 @@ MonoBehaviour:
   _appearDuration: 0.6
   _startYOffset: -500
   _startRotationZ: 180
+  _detailSlideDuration: 0.35
+  _detailHiddenXOffset: 900
   _stageSceneNames:
   - Sea
   - Stage2
@@ -2759,6 +2761,51 @@ MonoBehaviour:
   - Stage5
   - Stage6
   - Stage7
+  _stageTitles:
+  - 'Chapter 1
+
+    First Snow'
+  - 'Chapter 2
+
+    Old Site'
+  - 'Chapter 3
+
+    Crystal Road'
+  - 'Chapter 4
+
+    Silent Lake'
+  - 'Chapter 5
+
+    Pulse Rail'
+  - 'Chapter 6
+
+    Twilight Sea'
+  - 'Chapter 7
+
+    Last Lighthouse'
+  _stageDescriptions:
+  - "\uCCAB \uBC88\uC9F8 \uC5EC\uC815\uC785\uB2C8\uB2E4.\n\uAE30\uBCF8 \uC870\uC791\uACFC
+    \uC138\uACC4\uC758 \uADDC\uCE59\uC744 \uC775\uD799\uB2C8\uB2E4."
+  - "\uC624\uB798\uB41C \uC720\uC801\uC9C0\uC785\uB2C8\uB2E4.\n\uC6C0\uC9C1\uC774\uB294
+    \uBC1C\uD310\uACFC \uB099\uD558 \uAD6C\uC870\uAC00 \uB4F1\uC7A5\uD569\uB2C8\uB2E4."
+  - "\uACB0\uC815\uC73C\uB85C \uB4A4\uB36E\uC778 \uAE38\uC785\uB2C8\uB2E4.\n\uBBF8\uB044\uB7EC\uC6B4
+    \uC9C0\uD615\uACFC \uBC18\uC0AC \uAE30\uBBF9\uC744 \uD65C\uC6A9\uD569\uB2C8\uB2E4."
+  - "\uC18C\uB9AC\uAC00 \uC5BC\uC5B4\uBD99\uC740 \uD638\uC218\uC785\uB2C8\uB2E4.\n\uCE68\uBB35\uACFC
+    \uD0C0\uC774\uBC0D\uC744 \uC911\uC2EC\uC73C\uB85C \uC9C4\uD589\uB429\uB2C8\uB2E4."
+  - "\uD384\uC2A4 \uB808\uC77C\uC774 \uD750\uB974\uB294 \uAD6C\uAC04\uC785\uB2C8\uB2E4.\n\uBE60\uB978
+    \uC774\uB3D9\uACFC \uBC29\uD5A5 \uC804\uD658\uC774 \uD575\uC2EC\uC785\uB2C8\uB2E4."
+  - "\uD669\uD63C\uC758 \uBC14\uB2E4\uC785\uB2C8\uB2E4.\n\uAE30\uC5B5\uACFC \uBAA9\uC18C\uB9AC\uB97C
+    \uB530\uB77C \uAE4A\uC740 \uACF3\uC73C\uB85C \uD5A5\uD569\uB2C8\uB2E4."
+  - "\uB9C8\uC9C0\uB9C9 \uB4F1\uB300\uC785\uB2C8\uB2E4.\n\uC9C0\uAE08\uAE4C\uC9C0\uC758
+    \uC120\uD0DD\uC774 \uD558\uB098\uB85C \uBAA8\uC785\uB2C8\uB2E4."
+  _stageRewards:
+  - "\uBCF4\uC0C1: \uAE30\uBCF8 \uAE30\uB85D \uD574\uAE08"
+  - "\uBCF4\uC0C1: \uC624\uB798\uB41C \uC9C0\uB3C4 \uC870\uAC01"
+  - "\uBCF4\uC0C1: \uACB0\uC815 \uC870\uAC01"
+  - "\uBCF4\uC0C1: \uCE68\uBB35\uC758 \uAE30\uB85D"
+  - "\uBCF4\uC0C1: \uD384\uC2A4 \uC7A5\uCE58"
+  - "\uBCF4\uC0C1: \uBC14\uB2E4\uC758 \uD3B8\uC9C0"
+  - "\uBCF4\uC0C1: \uB9C8\uC9C0\uB9C9 \uBE5B"
 --- !u!1 &9207999594638570943
 GameObject:
   m_ObjectHideFlags: 0

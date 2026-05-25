@@ -52,6 +52,12 @@ public class UI_Scene_Main : UI_Scene
             Get<GameObject>((int)GameObjects.MenuItem_Quit).GetComponent<UI_FocusMenuItem>(),
         };
 
+        if (PlayerPrefs.GetInt("OpenStageSelectOnMain", 0) == 1)
+        {
+            PlayerPrefs.SetInt("OpenStageSelectOnMain", 0);
+            StartCoroutine(OpenStageSelectAfterOneFrame());
+        }
+
         SingletonManagers.Input.SetInputModeUI(true);
 
         SingletonManagers.Input.OnInput -= HandleInput;
@@ -173,7 +179,37 @@ public class UI_Scene_Main : UI_Scene
 
         Get<GameObject>((int)GameObjects.MainMenuGroup).SetActive(false);
     }
+    private IEnumerator OpenStageSelectAfterOneFrame()
+    {
+        yield return null;
 
+        Get<GameObject>((int)GameObjects.MainMenuGroup).SetActive(false);
+
+        SingletonManagers.Input.SetInputModeUI(true);
+
+        UI_Popup_FileSelect fileSelect = SingletonManagers.UI.ShowPopupUI<UI_Popup_FileSelect>();
+
+        if (fileSelect == null)
+        {
+            Debug.LogError("[Main] FileSelect 생성 실패");
+            yield break;
+        }
+
+        fileSelect.SetOwner(this);
+        fileSelect.HideImmediateForStageSelect();
+
+        UI_Popup_StageSelect stageSelect = SingletonManagers.UI.ShowPopupUI<UI_Popup_StageSelect>();
+
+        if (stageSelect == null)
+        {
+            Debug.LogError("[Main] StageSelect 생성 실패");
+
+            fileSelect.ShowAgainFromStageSelect();
+            yield break;
+        }
+
+        stageSelect.SetReturnFileSelect(fileSelect);
+    }
     public void ShowMainMenu()
     {
         GameObject menuGroup = Get<GameObject>((int)GameObjects.MainMenuGroup);
