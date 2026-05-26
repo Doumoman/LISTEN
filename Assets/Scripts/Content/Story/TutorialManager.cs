@@ -1,11 +1,12 @@
-﻿using System;
+﻿using NUnit.Framework.Constraints;
+using System;
 using UnityEngine;
 using Yarn.Unity;
 
 public class TutorialManager : MonoBehaviour
 {
     [SerializeField] private DialogueRunner dialogueRunner;
-    [SerializeField] private string startNode = "Tutorial_Fisher";
+    [SerializeField] private const string startNode = "Tutorial_Narration";
     [SerializeField] private TeleportEntry[] teleportPoints;
 
     private StoryManager _storyManager;
@@ -18,8 +19,7 @@ public class TutorialManager : MonoBehaviour
         foreach (var tp in teleportPoints) // 텔레포트 포인트들을 등록
             _storyManager.RegisterTeleportPoint(tp.name, tp.point);
 
-        _= _storyManager.StartStory(startNode);
-        // SingletonManagers.Input.SetInputModeUI(true);
+        _ = _storyManager.StartStory(startNode);
     }
 
     private void OnDestroy()
@@ -28,9 +28,10 @@ public class TutorialManager : MonoBehaviour
             _storyManager.UnregisterTeleportPoint(tp.name);
     }
 
-    // 애니메이션 이벤트·트리거 등 외부에서 챕터 특정 상호작용 완료 알림
-    public void NotifyInteraction(string interactionName) =>
-        _storyManager.NotifyInteractionCompleted(interactionName);
+    public void NotifyInteraction(string interactionName) => _storyManager.NotifyInteractionCompleted(interactionName);
+
+
+
 }
 
 [Serializable]

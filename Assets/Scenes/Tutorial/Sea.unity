@@ -8577,11 +8577,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cbbe4e6204aeb014390c64bb615654f8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TutorialManager
-  dialogueRunner: {fileID: 0}
-  startNode: 
-  teleportPoints:
-  - name: Start
-    point: {fileID: 0}
+  dialogueRunner: {fileID: 2127695162}
+  teleportPoints: []
 --- !u!4 &1137041944
 Transform:
   m_ObjectHideFlags: 0
@@ -18348,9 +18345,21 @@ PrefabInstance:
       propertyPath: m_AnchoredPosition.y
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 3859336322602399711, guid: 52571f68872914e24837210513edea1d, type: 3}
+      propertyPath: m_Layer
+      value: 5
+      objectReference: {fileID: 0}
+    - target: {fileID: 3859336324316773512, guid: 52571f68872914e24837210513edea1d, type: 3}
+      propertyPath: m_Layer
+      value: 5
+      objectReference: {fileID: 0}
     - target: {fileID: 7262066351540048079, guid: 52571f68872914e24837210513edea1d, type: 3}
       propertyPath: m_Name
       value: Dialogue System
+      objectReference: {fileID: 0}
+    - target: {fileID: 7262066351540048079, guid: 52571f68872914e24837210513edea1d, type: 3}
+      propertyPath: m_Layer
+      value: 5
       objectReference: {fileID: 0}
     - target: {fileID: 7985477256237130417, guid: 52571f68872914e24837210513edea1d, type: 3}
       propertyPath: m_LocalPosition.x
@@ -18420,10 +18429,18 @@ PrefabInstance:
       propertyPath: m_AnchoredPosition.y
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 8150228081625468094, guid: 52571f68872914e24837210513edea1d, type: 3}
+      propertyPath: m_SortingOrder
+      value: 10
+      objectReference: {fileID: 0}
     - target: {fileID: 8309902628685535410, guid: 52571f68872914e24837210513edea1d, type: 3}
       propertyPath: yarnProject
       value: 
       objectReference: {fileID: 7545569452688597077, guid: 8a612cff0ad0d304480a992ab4dbae5f, type: 3}
+    - target: {fileID: 9078442560890639579, guid: 52571f68872914e24837210513edea1d, type: 3}
+      propertyPath: m_Layer
+      value: 5
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -18468,6 +18485,17 @@ MonoBehaviour:
   m_PointerBehavior: 0
   m_CursorLockBehavior: 0
   m_ScrollDeltaPerTick: 6
+--- !u!114 &2127695162 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 8309902628685535410, guid: 52571f68872914e24837210513edea1d, type: 3}
+  m_PrefabInstance: {fileID: 2127695159}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4bec29c0a230741bdac901dba8da47ee, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &2137900454
 GameObject:
   m_ObjectHideFlags: 0
@@ -18552,10 +18580,10 @@ SceneRoots:
   m_Roots:
   - {fileID: 2003206046}
   - {fileID: 1137041944}
+  - {fileID: 2127695159}
   - {fileID: 1163763353}
   - {fileID: 1363832114}
   - {fileID: 1983167527}
   - {fileID: 736908478}
   - {fileID: 1004774782}
   - {fileID: 266060756}
-  - {fileID: 2127695159}

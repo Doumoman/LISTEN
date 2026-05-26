@@ -6,6 +6,7 @@ using Yarn.Unity;
 
 public class StoryManager : IManager
 {
+    // ㅡㅡㅡㅡㅡ Yarn Spinner에서 사용할 커맨드 이름 ex) <<block_player_input>> ㅡㅡㅡㅡㅡ
     private const string BLOCK_PLAYER_INPUT = "block_player_input";
     private const string FADE_IN = "fade_in";
     private const string FADE_OUT = "fade_out";
@@ -15,8 +16,8 @@ public class StoryManager : IManager
     private DialogueRunner _runner;
     private bool _init = false;
 
-    private string _waitingInteractionName = String.Empty;
-    private bool _isInteractionCompleted = false;
+    private string _waitingInteractionName = String.Empty; // 수행되기를 기다리는 상호작용 이름
+    private bool _isInteractionCompleted = false; // 상호작용 완료 플래그
 
     private readonly Dictionary<string, Transform> _teleportPoints = new();
 
@@ -47,7 +48,7 @@ public class StoryManager : IManager
     }
 
     /// <summary>
-    /// 특정 스토리 노드를 시작한다.
+    /// 특정 스토리 노드를 시작한다. 인자로 Yarn Script의 타이틀 이름을 넣어준다.
     /// </summary>
     public async YarnTask StartStory(string nodeName, Action onComplete = null)
     {
@@ -66,7 +67,7 @@ public class StoryManager : IManager
         await _runner.Stop();
     }
 
-    public bool IsRunning => _runner != null && _runner.IsDialogueRunning;
+    public bool IsRunning => _runner != null && _runner.IsDialogueRunning; // 대화가 진행중
 
     private void RegisterCommands()
     {
@@ -148,7 +149,7 @@ public class StoryManager : IManager
     #endregion
 
     /// <summary>
-    /// 외부에서 특정 상호작용에 성공하면 이름과 함께 호출
+    /// 외부에서 특정 상호작용에 성공하면 이름과 함께 호출하여 상호작용이 완료됐음을 알린다.
     /// </summary>
     public void NotifyInteractionCompleted(string interactionName)
     {
