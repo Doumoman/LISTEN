@@ -10,6 +10,7 @@ public class UI_Popup_Option : UI_Popup
         OptionItem_Sfx,
         OptionItem_Language,
         OptionItem_Resolution,
+        OptionItem_KeyConfig,
         HelpText
     }
 
@@ -59,7 +60,8 @@ public class UI_Popup_Option : UI_Popup
             GetTMP(GameObjects.OptionItem_Bgm),
             GetTMP(GameObjects.OptionItem_Sfx),
             GetTMP(GameObjects.OptionItem_Language),
-            GetTMP(GameObjects.OptionItem_Resolution)
+            GetTMP(GameObjects.OptionItem_Resolution),
+            GetTMP(GameObjects.OptionItem_KeyConfig)
         };
 
         _helpText = GetTMP(GameObjects.HelpText);
@@ -159,6 +161,8 @@ public class UI_Popup_Option : UI_Popup
                 else if (_resolutionIndex >= _resolutions.Length)
                     _resolutionIndex = 0;
                 break;
+            case 4:
+                break;
         }
 
         ApplyTemporarySettings();
@@ -174,6 +178,7 @@ public class UI_Popup_Option : UI_Popup
         SetTextSafe(1, $"효과음      < {_sfxVolume} >");
         SetTextSafe(2, $"언어        < {_languages[_languageIndex]} >");
         SetTextSafe(3, $"해상도      < {_resolutions[_resolutionIndex]} >");
+        SetTextSafe(4, "키 설정");
 
         for (int i = 0; i < _optionTexts.Length; i++)
         {
@@ -200,7 +205,10 @@ public class UI_Popup_Option : UI_Popup
 
     public override void OnSubmit()
     {
-        // 메인 메뉴 옵션에서는 Enter로 닫지 않음
+        if (_selectedIndex == 4)
+        {
+            SingletonManagers.UI.ShowPopupUI<UI_Popup_KeyConfig>();
+        }
     }
 
     public override void OnCancel()

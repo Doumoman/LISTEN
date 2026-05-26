@@ -9,6 +9,7 @@ public class UI_Popup_InGameOption : UI_Popup
         OptionItem_Bgm,
         OptionItem_Sfx,
         OptionItem_Resolution,
+        OptionItem_KeyConfig,
         HelpText
     }
 
@@ -55,7 +56,8 @@ public class UI_Popup_InGameOption : UI_Popup
         {
             GetTMP(GameObjects.OptionItem_Bgm),
             GetTMP(GameObjects.OptionItem_Sfx),
-            GetTMP(GameObjects.OptionItem_Resolution)
+            GetTMP(GameObjects.OptionItem_Resolution),
+            GetTMP(GameObjects.OptionItem_KeyConfig)
         };
 
         _helpText = GetTMP(GameObjects.HelpText);
@@ -146,6 +148,8 @@ public class UI_Popup_InGameOption : UI_Popup
                 else if (_resolutionIndex >= _resolutions.Length)
                     _resolutionIndex = 0;
                 break;
+            case 3:
+                break;
         }
 
         ApplyTemporarySettings();
@@ -160,6 +164,7 @@ public class UI_Popup_InGameOption : UI_Popup
         SetTextSafe(0, $"배경음      < {_bgmVolume} >");
         SetTextSafe(1, $"효과음      < {_sfxVolume} >");
         SetTextSafe(2, $"해상도      < {_resolutions[_resolutionIndex]} >");
+        SetTextSafe(3, "키 설정");
 
         for (int i = 0; i < _optionTexts.Length; i++)
         {
@@ -191,7 +196,10 @@ public class UI_Popup_InGameOption : UI_Popup
 
     public override void OnSubmit()
     {
-        // 인게임 옵션에서는 Enter로 닫지 않음.
+        if (_selectedIndex == 3)
+        {
+            SingletonManagers.UI.ShowPopupUI<UI_Popup_KeyConfig>();
+        }
     }
 
     public override void OnCancel()

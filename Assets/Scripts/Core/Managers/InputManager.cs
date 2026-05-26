@@ -2,7 +2,7 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-public class InputManager : IManager
+public partial class InputManager : IManager
 {
     private bool _init = false;
     private GameControls _controls;
