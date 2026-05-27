@@ -8,29 +8,23 @@ public partial class InputManager
 
     public bool IsRebinding { get; private set; }
 
-    public string GetBindingDisplayName(InputRebindAction action)
+    private struct RebindTarget
     {
-        InputAction inputAction = GetInputAction(action);
-        if (inputAction == null) return "-";
+        public InputAction action;
+        public int bindingIndex;
+        public bool syncSneak;
 
-        int bindingIndex = GetFirstNormalBindingIndex(inputAction);
-        if (bindingIndex < 0) return "-";
-
-        return inputAction.GetBindingDisplayString(bindingIndex);
+        public bool IsValid => action != null && bindingIndex >= 0;
     }
 
-    public string GetBindingDisplayNameFromPath(InputRebindAction action)
+    public string GetBindingDisplayName(InputRebindAction action)
     {
-        InputAction inputAction = GetInputAction(action);
-        if (inputAction == null) return "-";
+        RebindTarget target = GetRebindTarget(action);
 
-        int bindingIndex = GetFirstNormalBindingIndex(inputAction);
-        if (bindingIndex < 0) return "-";
+        if (!target.IsValid)
+            return "-";
 
-        return InputControlPath.ToHumanReadableString(
-            GetEffectivePath(inputAction.bindings[bindingIndex]),
-            InputControlPath.HumanReadableStringOptions.OmitDevice
-        );
+        return target.action.GetBindingDisplayString(target.bindingIndex);
     }
 
     public void StartRebind(
@@ -39,25 +33,19 @@ public partial class InputManager
         Action<string> onDuplicate = null,
         Action<string> onCanceled = null)
     {
-        InputAction inputAction = GetInputAction(action);
+        RebindTarget target = GetRebindTarget(action);
 
-        if (inputAction == null)
+        if (!target.IsValid)
         {
-            Debug.LogError($"[InputManager] Rebind 대상 액션을 찾지 못했습니다: {action}");
+            Debug.LogError($"[InputManager] Rebind 대상 바인딩을 찾지 못했습니다: {action}");
             return;
         }
 
         if (IsRebinding)
             return;
 
-        int bindingIndex = GetFirstNormalBindingIndex(inputAction);
-
-        if (bindingIndex < 0)
-        {
-            Debug.LogError($"[InputManager] 일반 키 바인딩을 찾지 못했습니다: {inputAction.name}");
-            return;
-        }
-
+        InputAction inputAction = target.action;
+        int bindingIndex = target.bindingIndex;
         string oldPath = GetEffectivePath(inputAction.bindings[bindingIndex]);
 
         IsRebinding = true;
@@ -74,7 +62,6 @@ public partial class InputManager
 
                 string newPath = GetEffectivePath(inputAction.bindings[bindingIndex]);
 
-                // 기존 키를 다시 누르면 취소
                 if (IsSamePath(oldPath, newPath))
                 {
                     RollbackBinding(inputAction, bindingIndex, oldPath);
@@ -86,8 +73,7 @@ public partial class InputManager
                     return;
                 }
 
-                // 중복 키면 롤백
-                if (IsDuplicateBinding(inputAction, newPath))
+                if (IsDuplicateBinding(inputAction, bindingIndex, newPath))
                 {
                     RollbackBinding(inputAction, bindingIndex, oldPath);
 
@@ -98,6 +84,11 @@ public partial class InputManager
 
                     onDuplicate?.Invoke(GetDisplayNameFromPath(oldPath));
                     return;
+                }
+
+                if (target.syncSneak)
+                {
+                    ApplySingleBindingOverride(_controls.GamePlay.Sneak, newPath);
                 }
 
                 inputAction.Enable();
@@ -123,42 +114,6 @@ public partial class InputManager
         _rebindOperation.Start();
     }
 
-    public void SetDirectionKeyScheme(DirectionKeyScheme scheme)
-    {
-        if (_controls == null) return;
-
-        if (scheme == DirectionKeyScheme.Arrow)
-        {
-            ApplyMoveBinding(
-                left: "<Keyboard>/leftArrow",
-                right: "<Keyboard>/rightArrow",
-                up: "<Keyboard>/upArrow",
-                down: "<Keyboard>/downArrow"
-            );
-
-            ApplySingleBindingOverride(_controls.GamePlay.Sneak, "<Keyboard>/downArrow");
-        }
-        else
-        {
-            ApplyMoveBinding(
-                left: "<Keyboard>/a",
-                right: "<Keyboard>/d",
-                up: "<Keyboard>/w",
-                down: "<Keyboard>/s"
-            );
-
-            ApplySingleBindingOverride(_controls.GamePlay.Sneak, "<Keyboard>/s");
-        }
-
-        PlayerPrefs.SetInt("DirectionKeyScheme", (int)scheme);
-        SaveBindingOverrides();
-    }
-
-    public DirectionKeyScheme LoadDirectionKeyScheme()
-    {
-        return (DirectionKeyScheme)PlayerPrefs.GetInt("DirectionKeyScheme", 0);
-    }
-
     public void LoadBindingOverrides()
     {
         if (_controls == null) return;
@@ -167,8 +122,6 @@ public partial class InputManager
 
         if (!string.IsNullOrEmpty(json))
             _controls.asset.LoadBindingOverridesFromJson(json);
-
-        SetDirectionKeyScheme(LoadDirectionKeyScheme());
     }
 
     public void SaveBindingOverrides()
@@ -187,46 +140,87 @@ public partial class InputManager
         _controls.asset.RemoveAllBindingOverrides();
 
         PlayerPrefs.DeleteKey("InputBindingOverrides");
-        PlayerPrefs.DeleteKey("DirectionKeyScheme");
         PlayerPrefs.Save();
-
-        SetDirectionKeyScheme(DirectionKeyScheme.Arrow);
     }
 
-    private InputAction GetInputAction(InputRebindAction action)
+    private RebindTarget GetRebindTarget(InputRebindAction action)
     {
-        if (_controls == null) return null;
+        if (_controls == null)
+            return default;
 
         switch (action)
         {
+            case InputRebindAction.MoveLeft:
+                return new RebindTarget
+                {
+                    action = _controls.GamePlay.Move,
+                    bindingIndex = FindCompositePartIndex(_controls.GamePlay.Move, "left"),
+                    syncSneak = false
+                };
+
+            case InputRebindAction.MoveRight:
+                return new RebindTarget
+                {
+                    action = _controls.GamePlay.Move,
+                    bindingIndex = FindCompositePartIndex(_controls.GamePlay.Move, "right"),
+                    syncSneak = false
+                };
+
+            case InputRebindAction.MoveUp:
+                return new RebindTarget
+                {
+                    action = _controls.GamePlay.LadderMove,
+                    bindingIndex = FindCompositePartIndex(_controls.GamePlay.LadderMove, "up"),
+                    syncSneak = false
+                };
+
+            case InputRebindAction.MoveDown:
+                return new RebindTarget
+                {
+                    action = _controls.GamePlay.LadderMove,
+                    bindingIndex = FindCompositePartIndex(_controls.GamePlay.LadderMove, "down"),
+                    syncSneak = true
+                };
+
             case InputRebindAction.Jump:
-                return _controls.GamePlay.Jump;
+                return new RebindTarget
+                {
+                    action = _controls.GamePlay.Jump,
+                    bindingIndex = GetFirstNormalBindingIndex(_controls.GamePlay.Jump),
+                    syncSneak = false
+                };
 
             case InputRebindAction.Interact:
-                return _controls.GamePlay.Interact;
+                return new RebindTarget
+                {
+                    action = _controls.GamePlay.Interact,
+                    bindingIndex = GetFirstNormalBindingIndex(_controls.GamePlay.Interact),
+                    syncSneak = false
+                };
 
             case InputRebindAction.Menu:
-                return _controls.GamePlay.Menu;
+                return new RebindTarget
+                {
+                    action = _controls.GamePlay.Menu,
+                    bindingIndex = GetFirstNormalBindingIndex(_controls.GamePlay.Menu),
+                    syncSneak = false
+                };
 
             case InputRebindAction.Talk:
-                return _controls.GamePlay.Talk;
+                return new RebindTarget
+                {
+                    action = _controls.GamePlay.Talk,
+                    bindingIndex = GetFirstNormalBindingIndex(_controls.GamePlay.Talk),
+                    syncSneak = false
+                };
         }
 
-        return null;
+        return default;
     }
 
-    private void ApplyMoveBinding(string left, string right, string up, string down)
+    private int FindCompositePartIndex(InputAction action, string partName)
     {
-        ApplyCompositePartOverride(_controls.GamePlay.Move, "left", left);
-        ApplyCompositePartOverride(_controls.GamePlay.Move, "right", right);
-
-        ApplyCompositePartOverride(_controls.GamePlay.LadderMove, "up", up);
-        ApplyCompositePartOverride(_controls.GamePlay.LadderMove, "down", down);
-    }
-
-    private void ApplyCompositePartOverride(InputAction action, string partName, string path)
-    {
-        if (action == null) return;
+        if (action == null) return -1;
 
         for (int i = 0; i < action.bindings.Count; i++)
         {
@@ -235,12 +229,11 @@ public partial class InputManager
             if (binding.isPartOfComposite &&
                 string.Equals(binding.name, partName, StringComparison.OrdinalIgnoreCase))
             {
-                action.ApplyBindingOverride(i, path);
-                return;
+                return i;
             }
         }
 
-        Debug.LogWarning($"[InputManager] {action.name}에서 Composite Part를 찾지 못했습니다: {partName}");
+        return -1;
     }
 
     private void ApplySingleBindingOverride(InputAction action, string path)
@@ -258,34 +251,45 @@ public partial class InputManager
         action.ApplyBindingOverride(bindingIndex, path);
     }
 
-    private bool IsDuplicateBinding(InputAction targetAction, string selectedPath)
+    private bool IsDuplicateBinding(InputAction targetAction, int targetBindingIndex, string selectedPath)
     {
         if (_controls == null) return false;
         if (targetAction == null) return false;
         if (string.IsNullOrEmpty(selectedPath)) return false;
 
-        InputAction[] singleActions =
+        InputAction[] allActions =
         {
+            _controls.GamePlay.Move,
+            _controls.GamePlay.LadderMove,
             _controls.GamePlay.Jump,
             _controls.GamePlay.Interact,
             _controls.GamePlay.Menu,
-            _controls.GamePlay.Talk
+            _controls.GamePlay.Talk,
+            _controls.GamePlay.Sneak
         };
 
-        foreach (InputAction action in singleActions)
+        foreach (InputAction action in allActions)
         {
             if (action == null)
-                continue;
-
-            if (action == targetAction)
                 continue;
 
             for (int i = 0; i < action.bindings.Count; i++)
             {
                 InputBinding binding = action.bindings[i];
 
-                if (binding.isComposite || binding.isPartOfComposite)
+                if (binding.isComposite)
                     continue;
+
+                if (action == targetAction && i == targetBindingIndex)
+                    continue;
+
+                // MoveDown은 Sneak과 같은 키를 공유해야 하므로 중복으로 보지 않음
+                if (targetAction == _controls.GamePlay.LadderMove &&
+                    IsCompositePart(action: targetAction, index: targetBindingIndex, partName: "down") &&
+                    action == _controls.GamePlay.Sneak)
+                {
+                    continue;
+                }
 
                 string path = GetEffectivePath(binding);
 
@@ -294,56 +298,18 @@ public partial class InputManager
             }
         }
 
-        if (IsPathUsedByComposite(_controls.GamePlay.Move, selectedPath))
-            return true;
-
-        if (IsPathUsedByComposite(_controls.GamePlay.LadderMove, selectedPath))
-            return true;
-
-        if (IsPathUsedBySingleAction(_controls.GamePlay.Sneak, selectedPath))
-            return true;
-
         return false;
     }
 
-    private bool IsPathUsedBySingleAction(InputAction action, string selectedPath)
+    private bool IsCompositePart(InputAction action, int index, string partName)
     {
         if (action == null) return false;
+        if (index < 0 || index >= action.bindings.Count) return false;
 
-        for (int i = 0; i < action.bindings.Count; i++)
-        {
-            InputBinding binding = action.bindings[i];
+        InputBinding binding = action.bindings[index];
 
-            if (binding.isComposite || binding.isPartOfComposite)
-                continue;
-
-            string path = GetEffectivePath(binding);
-
-            if (IsSamePath(path, selectedPath))
-                return true;
-        }
-
-        return false;
-    }
-
-    private bool IsPathUsedByComposite(InputAction action, string selectedPath)
-    {
-        if (action == null) return false;
-
-        for (int i = 0; i < action.bindings.Count; i++)
-        {
-            InputBinding binding = action.bindings[i];
-
-            if (!binding.isPartOfComposite)
-                continue;
-
-            string path = GetEffectivePath(binding);
-
-            if (IsSamePath(path, selectedPath))
-                return true;
-        }
-
-        return false;
+        return binding.isPartOfComposite &&
+               string.Equals(binding.name, partName, StringComparison.OrdinalIgnoreCase);
     }
 
     private int GetFirstNormalBindingIndex(InputAction action)

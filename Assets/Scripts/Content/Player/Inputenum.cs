@@ -1,13 +1,11 @@
 ﻿public enum InputRebindAction
 {
+    MoveLeft,
+    MoveRight,
+    MoveUp,
+    MoveDown,
     Jump,
     Interact,
     Menu,
     Talk
-}
-
-public enum DirectionKeyScheme
-{
-    Arrow,
-    WASD
 }
