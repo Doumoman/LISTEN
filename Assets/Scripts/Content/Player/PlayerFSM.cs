@@ -4,13 +4,15 @@ using UnityEngine.InputSystem;
 [RequireComponent(typeof(Rigidbody2D), typeof(BoxCollider2D), typeof(Animator))]
 public class PlayerFSM : MonoBehaviour
 {
+    [SerializeField] private PlayerData _playerData = new PlayerData();
+    public PlayerData PlayerData => _playerData;
+
+    private InputManager _inputManager;
+
     [Header("References")]
     public Animator Anim { get; private set; }
     public Rigidbody2D Rb { get; private set; }
     public BoxCollider2D Bc { get; private set; }
-
-    [SerializeField] private PlayerData _playerData = new PlayerData();
-    public PlayerData PlayerData => _playerData;
 
     [Header("States")]
     private PlayerBaseState _currentState;
@@ -22,22 +24,23 @@ public class PlayerFSM : MonoBehaviour
     public PlayerBaseState KilledState { get; private set; }
     public PlayerBaseState HangState { get; private set; }
 
-    private InputManager _inputManager;
-
     [Header("Physics")]
-    [SerializeField] private Vector2 _moveVelocity;
-    [SerializeField] private Vector2 _externalVelocity;
-    public Vector2 lastDir; // 마지막 방향
+    [SerializeField] private Vector2 _moveVelocity; // 사용자 입력으로 인한 속도
+    [SerializeField] private Vector2 _externalVelocity; // 외부 관성에 의한 속도
+    [SerializeField] private Vector2 _finalVelocity; // _moveVelocity + _externalVelocity 합산 결과
+    public Vector2 lastDir; // 플레이어가 바라보는 마지막 방향
 
     private readonly float SkinWidth = 0.02f; // 콜라이더 겉을 감싸는 얇은 막, 충돌 버그 방지
     private readonly int RayCount = 3; // 플레이어의 콜라이더를 RayCount로 등분해서 Ray를 쏜다
 
-    // LiftBoost
-    private Vector2 _liftVelocity;
+    // Lift Boost
+    [SerializeField] private Vector2 _liftVelocity; // 플랫폼에 의한 속도
     private float _liftVelocityTimer;
 
-    // 각종 타이머들
-    private float _groundedGraceTimer = 0f;
+    // 플레이어가 추적하는 MovingPlatform
+    private MovingPlatformController _currentPlatform;
+    private Vector2 _lastPlatformPosition;
+
     private float _jumpBufferTimer = 0f;
 
     private void Awake()
@@ -95,8 +98,9 @@ public class PlayerFSM : MonoBehaviour
         }
 
         // ㅡㅡㅡ Layer 감지 함수들 ㅡㅡㅡ
+        ApplyPlatformDelta();
         CheckGround();
-        CheckPlatformPush();
+        CheckMovingPlatformPushing();
         CheckLadder();
         CheckPushable();
         ApplyLayerPriority(); // 레이어 우선 순위 결정
@@ -119,6 +123,7 @@ public class PlayerFSM : MonoBehaviour
             _externalVelocity.x = Mathf.MoveTowards(_externalVelocity.x, 0f, _playerData.liftDecayX * Time.deltaTime);
 
         _currentState?.Update();
+        _finalVelocity = _moveVelocity + _externalVelocity;
         ApplyMovement(); // 실제 움직임 적용
     }
 
@@ -163,8 +168,9 @@ public class PlayerFSM : MonoBehaviour
     public void SetMoveVelocityX(float x) => _moveVelocity.x = x;
     public void SetMoveVelocityY(float y) => _moveVelocity.y = y;
     public Vector2 GetMoveVelocity() => _moveVelocity;
+    public Vector2 GetFinalVelocity() => _finalVelocity;
 
-    // LiftBoost API
+
     public void SetExternalVelocity(Vector2 v) => _externalVelocity = v;
     public void SetExternalVelocityX(float x) => _externalVelocity.x = x;
     public void SetExternalVelocityY(float y) => _externalVelocity.y = y;
@@ -174,7 +180,7 @@ public class PlayerFSM : MonoBehaviour
     // ── 이동 + 충돌 처리 ──
     private void ApplyMovement()
     {
-        Vector2 delta = (_moveVelocity + _externalVelocity) * Time.deltaTime;
+        Vector2 delta = _finalVelocity * Time.deltaTime;
 
         delta = ResolveHorizontal(delta); // 좌우 충돌 보정
         delta = ResolveVertical(delta); // 상하 충돌 보정
@@ -184,7 +190,6 @@ public class PlayerFSM : MonoBehaviour
 
     // 이번 프레임에 이동할 수평 거리를 미리 계산하고,
     // 그 방향에 벽이 있는지 확인하고 벽에 달라붙을 만큼만 이동거리를 줄여서 반환하는 함수
-    // 만약 isGrounded 상태이고 Ray가 경사를 감지했을때 그 법선 각도가 _maxSlopeAngle보다 작으면 y 좌표를 보정해준다.
     private Vector2 ResolveHorizontal(Vector2 delta)
     {
         if (Mathf.Abs(delta.x) < 0.0001f) return delta;
@@ -203,18 +208,9 @@ public class PlayerFSM : MonoBehaviour
             RaycastHit2D hit = Physics2D.Raycast(origin, Vector2.right * dir, rayLength, _playerData.collisionLayer);
             if (hit.collider != null)
             {
-                float slopeAngle = Vector2.Angle(hit.normal, Vector2.up);
-                if (_playerData.isGrounded && slopeAngle <= _playerData.maxSlopeAngle && hit.normal.y > 0.001f && _moveVelocity.y <= 0f)
-                {
-                    // 경사면: 수평 이동을 유지하고 Y축을 보정해 경사를 타고 오름
-                    delta.y = -delta.x * (hit.normal.x / hit.normal.y);
-                }
-                else
-                {
-                    delta.x = (hit.distance - SkinWidth) * dir;
-                    SetMoveVelocityX(0f);
-                    SetExternalVelocityX(0f);
-                }
+                delta.x = (hit.distance - SkinWidth) * dir;
+                SetMoveVelocityX(0f);
+                SetExternalVelocityX(0f);
                 break;
             }
         }
@@ -250,9 +246,20 @@ public class PlayerFSM : MonoBehaviour
         return delta;
     }
 
+    // ── MovingPlatform 위치 동기화 ──
+    private void ApplyPlatformDelta()
+    {
+        if (_currentPlatform == null) return;
+        Vector2 delta = (Vector2)_currentPlatform.transform.position - _lastPlatformPosition;
+        transform.position += (Vector3)delta;
+        _lastPlatformPosition = _currentPlatform.transform.position;
+    }
+
     // ── Layer 감지 함수들 ──
     private void CheckGround()
     {
+        _playerData.isGrounded = false;
+
         Vector2 center = (Vector2)transform.position + Bc.offset;
         float halfW = Bc.size.x * 0.5f - SkinWidth;
 
@@ -266,32 +273,30 @@ public class PlayerFSM : MonoBehaviour
             RaycastHit2D hit = Physics2D.Raycast(origin, Vector2.down, _playerData.groundCheckDistance + SkinWidth, _playerData.collisionLayer);
             if (hit.collider != null)
             {
-                _groundedGraceTimer = _playerData.groundGraceTime;
                 _playerData.isGrounded = true;
 
+                // MovePlatform 위에 올라탄 상태
                 var platform = hit.collider.GetComponentInParent<MovingPlatformController>();
                 if (platform != null)
                 {
                     _liftVelocity = platform.Velocity;
                     _liftVelocityTimer = _playerData.liftVelocityRetainTime;
-                    _externalVelocity.x = platform.Velocity.x;
-                    _externalVelocity.y = Mathf.Max(0f, platform.Velocity.y);
+
+                    if (_currentPlatform != platform)
+                    {
+                        _currentPlatform = platform;
+                        _lastPlatformPosition = platform.transform.position;
+                    }
+                    _externalVelocity = Vector2.zero; // 외부 관성은 0
                 }
                 else
                 {
+                    _currentPlatform = null;
                     _externalVelocity = Vector2.zero;
                 }
                 return;
             }
         }
-
-        if (_groundedGraceTimer > 0f)
-        {
-            _groundedGraceTimer -= Time.deltaTime;
-            _playerData.isGrounded = true;
-            return;
-        }
-        _playerData.isGrounded = false;
     }
 
     private void CheckLadder()
@@ -334,13 +339,13 @@ public class PlayerFSM : MonoBehaviour
         _playerData.isPushing = false;
     }
 
-    private void CheckPlatformPush()
+    private void CheckMovingPlatformPushing()
     {
         float halfH = Bc.size.y * 0.5f - SkinWidth;
         float rayLength = SkinWidth + 0.05f;
         Vector2 center = (Vector2)transform.position + Bc.offset;
 
-        for (int dir = -1; dir <= 1; dir += 2)
+        for (int dir = -1; dir <= 1; dir += 2) // dir은 -1 and 1
         {
             for (int i = 0; i < RayCount; i++)
             {
@@ -348,18 +353,16 @@ public class PlayerFSM : MonoBehaviour
                 Vector2 origin = center + Vector2.up * Mathf.Lerp(-halfH, halfH, t);
                 origin.x += dir * (Bc.size.x * 0.5f - SkinWidth);
 
-                RaycastHit2D hit = Physics2D.Raycast(origin, Vector2.right * dir, rayLength, _playerData.collisionLayer);
+                RaycastHit2D hit = Physics2D.Raycast(origin, Vector2.right * dir, rayLength, _playerData.collisionLayer); // dir이 -1,1이므로 Ray를 좌우로 한번씩 쏜다
                 if (hit.collider == null) continue;
 
-                var platform = hit.collider.GetComponentInParent<MovingPlatformController>();
+                var platform = hit.collider.GetComponentInParent<MovingPlatformController>(); // MovingPlatform 컴포넌트 감지
                 if (platform == null) continue;
 
-                // 플랫폼이 플레이어 방향으로 이동하고 있을 때만 밀기 적용
-                if (platform.Velocity.x * dir > 0f)
+                // MovingPlatform이 플레이어 방향으로 이동하고 있을 때만 밀기 적용
+                if (platform.Velocity.x * dir < 0f)
                 {
                     _externalVelocity.x = platform.Velocity.x;
-                    _liftVelocity = platform.Velocity;
-                    _liftVelocityTimer = _playerData.liftVelocityRetainTime;
                 }
                 break;
             }

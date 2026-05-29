@@ -45,15 +45,11 @@ public class PlayerData
     public bool isHolding; // 물체를 들고 있는지
     public bool isDead; // 플레이어 사망 여부
 
-    [Header("LiftBoost")]
-    public float maxLiftSpeedX = 8f;
-    public float maxLiftSpeedY = 6f;
-    public float liftDecayX = 16f;
-    public float liftVelocityRetainTime = 0.12f;
-
-    [Header("경사면 감지")]
-    public float groundGraceTime = 0.08f;
-    public float maxSlopeAngle = 45f;
+    [Header("Lift Boost")]
+    public float maxLiftSpeedX = 8f; // 수평 관성 최대치
+    public float maxLiftSpeedY = 6f; // 수직 관성 최대치
+    public float liftDecayX = 16f; // 공중에 있는 동안 외부 수평 관성을 0으로 줄이는 속도( /s )
+    public float liftVelocityRetainTime = 0.12f; // 플랫폼 이탈 후 부스트 유효 시간
 
     [Header("기본 콜라이더")]
     public Vector2 standingColliderSize = new Vector2(0.8f, 1.25f);
