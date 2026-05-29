@@ -19,7 +19,10 @@ public class AirborneState : PlayerBaseState
         {
             isJumping = true;
             coyoteTimer = 0f;
-            fsm.SetVelocityY(data.jumpSpeed);
+
+            Vector2 lift = fsm.GetLiftVelocity();
+            fsm.SetMoveVelocityY(data.jumpSpeed + Mathf.Clamp(lift.y, 0f, data.maxLiftSpeedY));
+            fsm.SetExternalVelocityX(Mathf.Clamp(lift.x, -data.maxLiftSpeedX, data.maxLiftSpeedX));
         }
         else
         {
@@ -30,7 +33,7 @@ public class AirborneState : PlayerBaseState
 
     public override void Update()
     {
-        Vector2 vel = fsm.GetVelocity();
+        Vector2 vel = fsm.GetMoveVelocity();
 
         // Coyote jump: 낙하로 진입 후 coyoteTime 안에 점프 입력 시 점프 허용
         if (!isJumping && coyoteTimer > 0f)
@@ -41,7 +44,10 @@ public class AirborneState : PlayerBaseState
                 isJumping = true;
                 coyoteTimer = 0f;
                 jumpHoldTime = 0f;
-                fsm.SetVelocityY(data.jumpSpeed);
+
+                Vector2 lift = fsm.GetLiftVelocity();
+                fsm.SetMoveVelocityY(data.jumpSpeed + Mathf.Clamp(lift.y, 0f, data.maxLiftSpeedY));
+                fsm.SetExternalVelocityX(Mathf.Clamp(lift.x, -data.maxLiftSpeedX, data.maxLiftSpeedX));
             }
         }
 
@@ -66,7 +72,7 @@ public class AirborneState : PlayerBaseState
         vel.y = Mathf.Max(vel.y, data.maxFallSpeed);
         vel.x = data.moveHorizontalInput.x * data.moveSpeed;
 
-        fsm.SetVelocity(vel.x, vel.y);
+        fsm.SetMoveVelocity(vel.x, vel.y);
 
         // 착지 → MoveState
         if (data.isGrounded && vel.y <= 0f)

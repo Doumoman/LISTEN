@@ -64,7 +64,7 @@ public class LedgeDetection : MonoBehaviour
         playerFSM.PlayerData.ledgeGrabDir = Mathf.Sign(playerFSM.lastDir.x);
         playerFSM.PlayerData.isLedgeGrabbed = true;
 
-        playerFSM.SetVelocity(0f, 0f);
+        playerFSM.SetMoveVelocity(0f, 0f);
     }
 
     private void OnDrawGizmos()

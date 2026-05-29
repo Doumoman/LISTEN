@@ -45,6 +45,12 @@ public class PlayerData
     public bool isHolding; // 물체를 들고 있는지
     public bool isDead; // 플레이어 사망 여부
 
+    [Header("LiftBoost")]
+    public float maxLiftSpeedX = 8f;
+    public float maxLiftSpeedY = 6f;
+    public float liftDecayX = 16f;
+    public float liftVelocityRetainTime = 0.12f;
+
     [Header("경사면 감지")]
     public float groundGraceTime = 0.08f;
     public float maxSlopeAngle = 45f;

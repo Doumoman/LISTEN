@@ -25,11 +25,16 @@ public class PlayerFSM : MonoBehaviour
     private InputManager _inputManager;
 
     [Header("Physics")]
-    [SerializeField] private Vector2 _velocity; // 속도
+    [SerializeField] private Vector2 _moveVelocity;
+    [SerializeField] private Vector2 _externalVelocity;
     public Vector2 lastDir; // 마지막 방향
 
     private readonly float SkinWidth = 0.02f; // 콜라이더 겉을 감싸는 얇은 막, 충돌 버그 방지
     private readonly int RayCount = 3; // 플레이어의 콜라이더를 RayCount로 등분해서 Ray를 쏜다
+
+    // LiftBoost
+    private Vector2 _liftVelocity;
+    private float _liftVelocityTimer;
 
     // 각종 타이머들
     private float _groundedGraceTimer = 0f;
@@ -91,6 +96,7 @@ public class PlayerFSM : MonoBehaviour
 
         // ㅡㅡㅡ Layer 감지 함수들 ㅡㅡㅡ
         CheckGround();
+        CheckPlatformPush();
         CheckLadder();
         CheckPushable();
         ApplyLayerPriority(); // 레이어 우선 순위 결정
@@ -103,6 +109,14 @@ public class PlayerFSM : MonoBehaviour
             scale.x = _playerData.moveHorizontalInput.x > 0 ? Mathf.Abs(scale.x) : -Mathf.Abs(scale.x);
             transform.localScale = scale;
         }
+
+        // LiftBoost 타이머 감소
+        if (_liftVelocityTimer > 0f)
+            _liftVelocityTimer -= Time.deltaTime;
+
+        // 공중에서 external X 감쇠
+        if (!_playerData.isGrounded)
+            _externalVelocity.x = Mathf.MoveTowards(_externalVelocity.x, 0f, _playerData.liftDecayX * Time.deltaTime);
 
         _currentState?.Update();
         ApplyMovement(); // 실제 움직임 적용
@@ -145,15 +159,22 @@ public class PlayerFSM : MonoBehaviour
     }
 
     // ㅡㅡ 이동 관련 헬퍼 함수들 ㅡㅡ
-    public void SetVelocity(float x, float y) => _velocity = new Vector2(x, y);
-    public void SetVelocityX(float x) => _velocity.x = x;
-    public void SetVelocityY(float y) => _velocity.y = y;
-    public Vector2 GetVelocity() => _velocity;
+    public void SetMoveVelocity(float x, float y) => _moveVelocity = new Vector2(x, y);
+    public void SetMoveVelocityX(float x) => _moveVelocity.x = x;
+    public void SetMoveVelocityY(float y) => _moveVelocity.y = y;
+    public Vector2 GetMoveVelocity() => _moveVelocity;
+
+    // LiftBoost API
+    public void SetExternalVelocity(Vector2 v) => _externalVelocity = v;
+    public void SetExternalVelocityX(float x) => _externalVelocity.x = x;
+    public void SetExternalVelocityY(float y) => _externalVelocity.y = y;
+    public void AddExternalVelocity(Vector2 v) => _externalVelocity += v;
+    public Vector2 GetLiftVelocity() => _liftVelocityTimer > 0f ? _liftVelocity : Vector2.zero;
 
     // ── 이동 + 충돌 처리 ──
     private void ApplyMovement()
     {
-        Vector2 delta = _velocity * Time.deltaTime;
+        Vector2 delta = (_moveVelocity + _externalVelocity) * Time.deltaTime;
 
         delta = ResolveHorizontal(delta); // 좌우 충돌 보정
         delta = ResolveVertical(delta); // 상하 충돌 보정
@@ -183,7 +204,7 @@ public class PlayerFSM : MonoBehaviour
             if (hit.collider != null)
             {
                 float slopeAngle = Vector2.Angle(hit.normal, Vector2.up);
-                if (_playerData.isGrounded && slopeAngle <= _playerData.maxSlopeAngle && hit.normal.y > 0.001f && _velocity.y <= 0f)
+                if (_playerData.isGrounded && slopeAngle <= _playerData.maxSlopeAngle && hit.normal.y > 0.001f && _moveVelocity.y <= 0f)
                 {
                     // 경사면: 수평 이동을 유지하고 Y축을 보정해 경사를 타고 오름
                     delta.y = -delta.x * (hit.normal.x / hit.normal.y);
@@ -191,7 +212,8 @@ public class PlayerFSM : MonoBehaviour
                 else
                 {
                     delta.x = (hit.distance - SkinWidth) * dir;
-                    SetVelocityX(0f);
+                    SetMoveVelocityX(0f);
+                    SetExternalVelocityX(0f);
                 }
                 break;
             }
@@ -220,7 +242,8 @@ public class PlayerFSM : MonoBehaviour
             if (hit.collider != null)
             {
                 delta.y = (hit.distance - SkinWidth) * dir;
-                SetVelocityY(0f);
+                SetMoveVelocityY(0f);
+                SetExternalVelocityY(0f);
                 break;
             }
         }
@@ -245,6 +268,19 @@ public class PlayerFSM : MonoBehaviour
             {
                 _groundedGraceTimer = _playerData.groundGraceTime;
                 _playerData.isGrounded = true;
+
+                var platform = hit.collider.GetComponentInParent<MovingPlatformController>();
+                if (platform != null)
+                {
+                    _liftVelocity = platform.Velocity;
+                    _liftVelocityTimer = _playerData.liftVelocityRetainTime;
+                    _externalVelocity.x = platform.Velocity.x;
+                    _externalVelocity.y = Mathf.Max(0f, platform.Velocity.y);
+                }
+                else
+                {
+                    _externalVelocity = Vector2.zero;
+                }
                 return;
             }
         }
@@ -296,6 +332,38 @@ public class PlayerFSM : MonoBehaviour
 
         _playerData.nearPushableCollider = null;
         _playerData.isPushing = false;
+    }
+
+    private void CheckPlatformPush()
+    {
+        float halfH = Bc.size.y * 0.5f - SkinWidth;
+        float rayLength = SkinWidth + 0.05f;
+        Vector2 center = (Vector2)transform.position + Bc.offset;
+
+        for (int dir = -1; dir <= 1; dir += 2)
+        {
+            for (int i = 0; i < RayCount; i++)
+            {
+                float t = (RayCount == 1) ? 0.5f : (float)i / (RayCount - 1);
+                Vector2 origin = center + Vector2.up * Mathf.Lerp(-halfH, halfH, t);
+                origin.x += dir * (Bc.size.x * 0.5f - SkinWidth);
+
+                RaycastHit2D hit = Physics2D.Raycast(origin, Vector2.right * dir, rayLength, _playerData.collisionLayer);
+                if (hit.collider == null) continue;
+
+                var platform = hit.collider.GetComponentInParent<MovingPlatformController>();
+                if (platform == null) continue;
+
+                // 플랫폼이 플레이어 방향으로 이동하고 있을 때만 밀기 적용
+                if (platform.Velocity.x * dir > 0f)
+                {
+                    _externalVelocity.x = platform.Velocity.x;
+                    _liftVelocity = platform.Velocity;
+                    _liftVelocityTimer = _playerData.liftVelocityRetainTime;
+                }
+                break;
+            }
+        }
     }
 
     private void ApplyLayerPriority()

@@ -12,7 +12,7 @@ public class SneakMoveState : PlayerBaseState
 
     public override void Enter()
     {
-        fsm.SetVelocity(0f, 0f);
+        fsm.SetMoveVelocity(0f, 0f);
 
         fsm.Bc.size = data.standingColliderSize;
         fsm.Bc.offset = data.standingColliderOffset;
@@ -62,7 +62,7 @@ public class SneakMoveState : PlayerBaseState
 
         // 실제 velocity 적용
         float horizontalVel = data.moveHorizontalInput.x * data.sneakSpeed;
-        fsm.SetVelocity(horizontalVel, 0f);
+        fsm.SetMoveVelocity(horizontalVel, 0f);
         PlayAnim();
     }
 

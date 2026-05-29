@@ -18,6 +18,9 @@ public class MovingPlatformController : MonoBehaviour
     private bool _movingToB;
     private float _waitTimer;
 
+    private Vector2 _prevPosition;
+    public Vector2 Velocity { get; private set; }
+
     private void Awake()
     {
         _rb = GetComponent<Rigidbody2D>();
@@ -30,6 +33,7 @@ public class MovingPlatformController : MonoBehaviour
 
     private void Start()
     {
+        _prevPosition = _rb.position;
         RefreshTarget();
     }
 
@@ -53,9 +57,13 @@ public class MovingPlatformController : MonoBehaviour
         if (_target == null)
             RefreshTarget();
 
+        Velocity = (_rb.position - _prevPosition) / Time.fixedDeltaTime;
+        _prevPosition = _rb.position;
+
         if (_waitTimer > 0f)
         {
             _waitTimer -= Time.fixedDeltaTime;
+            Velocity = Vector2.zero;
             return;
         }
 
