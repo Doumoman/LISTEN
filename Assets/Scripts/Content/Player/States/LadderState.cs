@@ -10,6 +10,8 @@ public class LadderState : PlayerBaseState
     public override void Enter()
     {
         fsm.SetMoveVelocity(Vector2.zero);
+        fsm.SetExternalVelocity(Vector2.zero);
+
         PlayAnim();
 
         _ladderCollider = data.nearLadderCollider;

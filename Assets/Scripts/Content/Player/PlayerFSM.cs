@@ -133,7 +133,7 @@ public class PlayerFSM : MonoBehaviour
         if (_liftVelocityTimer > 0f)
             _liftVelocityTimer -= Time.deltaTime;
 
-        // 공중에서 external X 감쇠
+        // 공중에서 external X 감쇠, 순간적인 속도를 내기 위함
         if (!_playerData.isGrounded)
             _externalVelocity.x = Mathf.MoveTowards(_externalVelocity.x, 0f, _playerData.liftDecayX * Time.deltaTime);
 
@@ -216,7 +216,10 @@ public class PlayerFSM : MonoBehaviour
         float dir = Mathf.Sign(delta.x);
         float rayLength = Mathf.Abs(delta.x) + SkinWidth;
         float halfH = Bc.size.y * 0.5f - SkinWidth;
+
         Vector2 center = (Vector2)transform.position + Bc.offset;
+
+        float minDistance = Mathf.Infinity; // 여러 Ray 중 가장 가까운 hit 거리를 채택
 
         for (int i = 0; i < RayCount; i++)
         {
@@ -225,13 +228,15 @@ public class PlayerFSM : MonoBehaviour
             origin.x += dir * (Bc.size.x * 0.5f - SkinWidth);
 
             RaycastHit2D hit = Physics2D.Raycast(origin, Vector2.right * dir, rayLength, _playerData.collisionLayer);
-            if (hit.collider != null)
-            {
-                delta.x = (hit.distance - SkinWidth) * dir;
-                SetMoveVelocityX(0f);
-                SetExternalVelocityX(0f);
-                break;
-            }
+            if (hit.collider != null && hit.distance < minDistance)
+                minDistance = hit.distance;
+        }
+
+        if (!float.IsInfinity(minDistance))
+        {
+            delta.x = (minDistance - SkinWidth) * dir;
+            SetMoveVelocityX(0f);
+            SetExternalVelocityX(0f);
         }
         return delta;
     }
@@ -247,6 +252,8 @@ public class PlayerFSM : MonoBehaviour
         float halfW = Bc.size.x * 0.5f - SkinWidth;
         Vector2 center = (Vector2)transform.position + Bc.offset;
 
+        float minDistance = Mathf.Infinity; // 여러 Ray 중 가장 가까운 hit 거리를 채택
+
         for (int i = 0; i < RayCount; i++)
         {
             float t = (RayCount == 1) ? 0.5f : (float)i / (RayCount - 1);
@@ -254,13 +261,15 @@ public class PlayerFSM : MonoBehaviour
             origin.y += dir * (Bc.size.y * 0.5f - SkinWidth);
 
             RaycastHit2D hit = Physics2D.Raycast(origin, Vector2.up * dir, rayLength, _playerData.collisionLayer);
-            if (hit.collider != null)
-            {
-                delta.y = (hit.distance - SkinWidth) * dir;
-                SetMoveVelocityY(0f);
-                SetExternalVelocityY(0f);
-                break;
-            }
+            if (hit.collider != null && hit.distance < minDistance)
+                minDistance = hit.distance;
+        }
+
+        if (!float.IsInfinity(minDistance))
+        {
+            delta.y = (minDistance - SkinWidth) * dir;
+            SetMoveVelocityY(0f);
+            SetExternalVelocityY(0f);
         }
         return delta;
     }
@@ -283,6 +292,9 @@ public class PlayerFSM : MonoBehaviour
         Vector2 center = (Vector2)transform.position + Bc.offset;
         float halfW = Bc.size.x * 0.5f - SkinWidth;
 
+        Collider2D closestCollider = null;
+        float minDistance = Mathf.Infinity; // 여러 Ray 중 가장 가까운(높은) 면을 채택
+
         // Collider의 width를 RayCount 수 만큼 일정 간격으로 나눠서 수직 아래로 Ray를 쏜다
         for (int i = 0; i < RayCount; i++)
         {
@@ -291,35 +303,41 @@ public class PlayerFSM : MonoBehaviour
             origin.y -= Bc.size.y * 0.5f - SkinWidth;
 
             RaycastHit2D hit = Physics2D.Raycast(origin, Vector2.down, _playerData.groundCheckDistance + SkinWidth, _playerData.collisionLayer);
-            if (hit.collider != null)
+            if (hit.collider != null && hit.distance < minDistance)
             {
-                _playerData.isGrounded = true;
-
-                // MovePlatform 위에 올라탄 상태
-                var platform = hit.collider.GetComponentInParent<MovingPlatformController>();
-                if (platform != null)
-                {
-                    _liftVelocity = platform.Velocity;
-                    _liftVelocityTimer = _playerData.liftVelocityRetainTime;
-
-                    if (_currentPlatform != platform)
-                    {
-                        _currentPlatform = platform;
-                        _lastPlatformPosition = platform.transform.position;
-                    }
-                    _externalVelocity = Vector2.zero; // 외부 관성은 0
-                }
-                else
-                {
-                    _currentPlatform = null;
-                    _externalVelocity = Vector2.zero;
-                }
-                return;
+                minDistance = hit.distance;
+                closestCollider = hit.collider;
             }
         }
 
-        // Platform을 감지하지 못하면 null로
-        _currentPlatform = null;
+        // 하나도 못 맞히면 공중 상태 (Platform 추적 해제)
+        if (closestCollider == null)
+        {
+            _currentPlatform = null;
+            return;
+        }
+
+        _playerData.isGrounded = true;
+
+        // 가장 가까운(높은) 면 기준으로 올라탄 MovingPlatform 결정
+        var platform = closestCollider.GetComponentInParent<MovingPlatformController>();
+        if (platform != null)
+        {
+            _liftVelocity = platform.Velocity;
+            _liftVelocityTimer = _playerData.liftVelocityRetainTime;
+
+            if (_currentPlatform != platform)
+            {
+                _currentPlatform = platform;
+                _lastPlatformPosition = platform.transform.position;
+            }
+            _externalVelocity = Vector2.zero; // 외부 관성은 0
+        }
+        else
+        {
+            _currentPlatform = null;
+            _externalVelocity = Vector2.zero;
+        }
     }
 
     private void CheckLadder()
@@ -364,30 +382,57 @@ public class PlayerFSM : MonoBehaviour
 
     private void CheckMovingPlatformPushing()
     {
-        float halfH = Bc.size.y * 0.5f - SkinWidth;
-        float rayLength = SkinWidth + 0.05f;
         Vector2 center = (Vector2)transform.position + Bc.offset;
 
-        for (int dir = -1; dir <= 1; dir += 2) // dir은 -1 and 1
+        // 수평(axis 0: x) / 수직(axis 1: y) 양축에 대해 좌우/상하로 스윕 감지
+        for (int axis = 0; axis < 2; axis++)
         {
-            for (int i = 0; i < RayCount; i++)
+            // axis에 수직인 방향으로 콜라이더를 등분해 Ray를 펼친다
+            int sweepAxis = 1 - axis;
+            float halfSweep = Bc.size[sweepAxis] * 0.5f - SkinWidth;
+            float halfThis = Bc.size[axis] * 0.5f - SkinWidth;
+
+            // 이번 프레임 플레이어 이동량 + 플랫폼 이동분 여유까지 덮는 Ray 길이 (상대 접근 거리)
+            float rayLength = SkinWidth + Mathf.Abs(_finalVelocity[axis]) * Time.deltaTime + _playerData.platformPushBuffer;
+
+            for (int dir = -1; dir <= 1; dir += 2) // dir은 -1 and 1
             {
-                float t = (RayCount == 1) ? 0.5f : (float)i / (RayCount - 1);
-                Vector2 origin = center + Vector2.up * Mathf.Lerp(-halfH, halfH, t);
-                origin.x += dir * (Bc.size.x * 0.5f - SkinWidth);
+                Vector2 rayDir = (axis == 0) ? Vector2.right * dir : Vector2.up * dir;
 
-                RaycastHit2D hit = Physics2D.Raycast(origin, Vector2.right * dir, rayLength, _playerData.collisionLayer); // dir이 -1,1이므로 Ray를 좌우로 한번씩 쏜다
-                if (hit.collider == null) continue;
-
-                var platform = hit.collider.GetComponentInParent<MovingPlatformController>(); // MovingPlatform 컴포넌트 감지
-                if (platform == null) continue;
-
-                // MovingPlatform이 플레이어 방향으로 이동하고 있을 때만 밀기 적용
-                if (platform.Velocity.x * dir < 0f)
+                for (int i = 0; i < RayCount; i++)
                 {
-                    _externalVelocity.x = platform.Velocity.x;
+                    float t = (RayCount == 1) ? 0.5f : (float)i / (RayCount - 1);
+
+                    Vector2 origin = center;
+                    if (axis == 0) origin.y += Mathf.Lerp(-halfSweep, halfSweep, t);
+                    else origin.x += Mathf.Lerp(-halfSweep, halfSweep, t);
+                    origin[axis] += dir * halfThis;
+
+                    RaycastHit2D hit = Physics2D.Raycast(origin, rayDir, rayLength, _playerData.collisionLayer);
+                    if (hit.collider == null) continue;
+
+                    var platform = hit.collider.GetComponentInParent<MovingPlatformController>(); // MovingPlatform 컴포넌트 감지
+                    if (platform == null) continue;
+
+                    // 올라타기(riding)는 CheckGround/ApplyPlatformDelta가 담당하므로 이중 적용 방지
+                    if (platform == _currentPlatform) continue;
+
+                    // MovingPlatform이 플레이어 방향으로 이동하고 있을 때만 밀기 적용
+                    if (platform.Velocity[axis] * dir >= 0f) break;
+
+                    _externalVelocity[axis] = platform.Velocity[axis];
+
+                    // 밀착 보정: 플레이어 모서리를 플랫폼 선단 표면에 맞춰 관통 방지
+                    float outerEdge = center[axis] + dir * (Bc.size[axis] * 0.5f);
+                    float correction = hit.point[axis] - outerEdge;
+                    if (Mathf.Abs(correction) > 0f && Mathf.Sign(correction) == Mathf.Sign(platform.Velocity[axis]))
+                    {
+                        Vector3 fix = Vector3.zero;
+                        fix[axis] = correction;
+                        transform.position += fix;
+                    }
+                    break;
                 }
-                break;
             }
         }
     }

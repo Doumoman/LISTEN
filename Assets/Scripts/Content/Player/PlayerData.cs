@@ -49,6 +49,9 @@ public class PlayerData
     public bool isHolding; // 물체를 들고 있는지
     public bool isDead; // 플레이어 사망 여부
 
+    [Header("Moving Platform")]
+    public float platformPushBuffer = 0.05f; // 빠른 플랫폼 감지 Ray 여유분 (프레임당 플랫폼 이동량 커버)
+
     [Header("Lift Boost")]
     public float maxLiftSpeedX = 8f; // 수평 관성 최대치
     public float maxLiftSpeedY = 6f; // 수직 관성 최대치
