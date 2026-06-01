@@ -399,6 +399,11 @@ public class PlayerFSM : MonoBehaviour
             {
                 Vector2 rayDir = (axis == 0) ? Vector2.right * dir : Vector2.up * dir;
 
+                float bestCorrection = 0f;   // 여러 Ray 중 가장 깊게 박힌 보정량
+                float pushVelocity = 0f;     // 적용할 외부 속도
+                bool hasPush = false;        // 미는 플랫폼 감지 여부
+                bool hasPenetration = false; // 실제 침투(스냅 필요) 여부
+
                 for (int i = 0; i < RayCount; i++)
                 {
                     float t = (RayCount == 1) ? 0.5f : (float)i / (RayCount - 1);
@@ -418,20 +423,39 @@ public class PlayerFSM : MonoBehaviour
                     if (platform == _currentPlatform) continue;
 
                     // MovingPlatform이 플레이어 방향으로 이동하고 있을 때만 밀기 적용
-                    if (platform.Velocity[axis] * dir >= 0f) break;
+                    if (platform.Velocity[axis] * dir >= 0f) continue;
 
-                    _externalVelocity[axis] = platform.Velocity[axis];
+                    // 이번 프레임에 실제로 닿을 거리인지 플랫폼 자기 속도 기준으로 게이팅 (느린 플랫폼의 유령 푸시 방지)
+                    float contactThreshold = SkinWidth + (Mathf.Abs(platform.Velocity[axis]) + Mathf.Abs(_finalVelocity[axis])) * Time.deltaTime;
+                    if (hit.distance > contactThreshold) continue;
 
-                    // 밀착 보정: 플레이어 모서리를 플랫폼 선단 표면에 맞춰 관통 방지
+                    hasPush = true;
+
+                    // 밀착 보정: 가장 깊게 박힌 Ray 기준으로 플레이어 모서리를 플랫폼 선단 표면에 맞춤
                     float outerEdge = center[axis] + dir * (Bc.size[axis] * 0.5f);
                     float correction = hit.point[axis] - outerEdge;
-                    if (Mathf.Abs(correction) > 0f && Mathf.Sign(correction) == Mathf.Sign(platform.Velocity[axis]))
+                    if (Mathf.Sign(correction) == Mathf.Sign(platform.Velocity[axis]) && Mathf.Abs(correction) > Mathf.Abs(bestCorrection))
+                    {
+                        bestCorrection = correction;
+                        pushVelocity = platform.Velocity[axis];
+                        hasPenetration = true;
+                    }
+                    else if (!hasPenetration)
+                    {
+                        pushVelocity = platform.Velocity[axis]; // 아직 접촉 전이라도 접근 중인 플랫폼 속도 반영
+                    }
+                }
+
+                if (hasPush)
+                {
+                    _externalVelocity[axis] = pushVelocity;
+
+                    if (hasPenetration)
                     {
                         Vector3 fix = Vector3.zero;
-                        fix[axis] = correction;
+                        fix[axis] = bestCorrection;
                         transform.position += fix;
                     }
-                    break;
                 }
             }
         }

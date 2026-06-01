@@ -1398,10 +1398,6 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
-    - target: {fileID: 838136718753400594, guid: 0ceeb528180ef664db81091209130140, type: 3}
-      propertyPath: _playerData.platformPushBuffer
-      value: 0.5
-      objectReference: {fileID: 0}
     - target: {fileID: 967656970958458871, guid: 0ceeb528180ef664db81091209130140, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0

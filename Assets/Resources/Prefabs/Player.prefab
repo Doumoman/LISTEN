@@ -283,6 +283,7 @@ MonoBehaviour:
     isNearLadder: 0
     isHolding: 0
     isDead: 0
+    platformPushBuffer: 0.2
     maxLiftSpeedX: 8
     maxLiftSpeedY: 6
     liftDecayX: 16
