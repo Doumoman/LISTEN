@@ -13,7 +13,8 @@ public class HangState : PlayerBaseState
     {
         data.isHanging = true;
         data.isFalling = false;
-        fsm.SetMoveVelocity(0f, 0f);
+        fsm.SetMoveVelocity(Vector2.zero);
+        fsm.SetExternalVelocity(Vector2.zero);
 
         // offset은 바라보는 방향의 반대로 
         _targetPos = data.ledgeCornerPos + new Vector2(data.ledgeOffset.x * (-data.ledgeGrabDir), data.ledgeOffset.y);
@@ -25,7 +26,7 @@ public class HangState : PlayerBaseState
         pos.x = Mathf.MoveTowards(pos.x, _targetPos.x, SnapSpeed * Time.deltaTime);
         pos.y = Mathf.MoveTowards(pos.y, _targetPos.y, SnapSpeed * Time.deltaTime);
         fsm.transform.position = pos;
-        fsm.SetMoveVelocity(0f, 0f);
+        fsm.SetMoveVelocity(Vector2.zero);
 
         // 점프 → AirborneState
         if (data.isJumpRequested)

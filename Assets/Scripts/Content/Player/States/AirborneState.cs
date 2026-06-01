@@ -6,7 +6,6 @@ public class AirborneState : PlayerBaseState
 
     private float jumpHoldTime = 0f;
     private bool isJumping = false;
-    private float coyoteTimer = 0f;
 
     public AirborneState(PlayerFSM fsm) : base(fsm) { }
 
@@ -18,7 +17,7 @@ public class AirborneState : PlayerBaseState
         if (data.isJumpRequested)
         {
             isJumping = true;
-            coyoteTimer = 0f;
+            fsm.ConsumeCoyote();
 
             Vector2 lift = fsm.GetLiftVelocity();
             fsm.SetMoveVelocityY(data.jumpSpeed + Mathf.Clamp(lift.y, 0f, data.maxLiftSpeedY));
@@ -27,7 +26,6 @@ public class AirborneState : PlayerBaseState
         else
         {
             isJumping = false;
-            coyoteTimer = data.coyoteTime;
         }
     }
 
@@ -35,20 +33,17 @@ public class AirborneState : PlayerBaseState
     {
         Vector2 vel = fsm.GetMoveVelocity();
 
-        // Coyote jump: 낙하로 진입 후 coyoteTime 안에 점프 입력 시 점프 허용
-        if (!isJumping && coyoteTimer > 0f)
+        // Coyote jump: 땅을 떠난 뒤 coyoteTime 안에 점프 입력 시 점프 허용
+        // (coyote 잔여 시간은 PlayerFSM이 마지막 grounded 시점 기준으로 중앙 관리)
+        if (!isJumping && fsm.CoyoteAvailable && fsm.ConsumeJumpBuffer())
         {
-            coyoteTimer -= Time.deltaTime;
-            if (data.isJumpRequested)
-            {
-                isJumping = true;
-                coyoteTimer = 0f;
-                jumpHoldTime = 0f;
+            isJumping = true;
+            fsm.ConsumeCoyote();
+            jumpHoldTime = 0f;
 
-                Vector2 lift = fsm.GetLiftVelocity();
-                fsm.SetMoveVelocityY(data.jumpSpeed + Mathf.Clamp(lift.y, 0f, data.maxLiftSpeedY));
-                fsm.SetExternalVelocityX(Mathf.Clamp(lift.x, -data.maxLiftSpeedX, data.maxLiftSpeedX));
-            }
+            Vector2 lift = fsm.GetLiftVelocity();
+            fsm.SetMoveVelocityY(data.jumpSpeed + Mathf.Clamp(lift.y, 0f, data.maxLiftSpeedY));
+            fsm.SetExternalVelocityX(Mathf.Clamp(lift.x, -data.maxLiftSpeedX, data.maxLiftSpeedX));
         }
 
         float effectiveGravity;
@@ -72,7 +67,7 @@ public class AirborneState : PlayerBaseState
         vel.y = Mathf.Max(vel.y, data.maxFallSpeed);
         vel.x = data.moveHorizontalInput.x * data.moveSpeed;
 
-        fsm.SetMoveVelocity(vel.x, vel.y);
+        fsm.SetMoveVelocity(vel);
 
         // 착지 → MoveState
         if (data.isGrounded && vel.y <= 0f)
@@ -89,7 +84,7 @@ public class AirborneState : PlayerBaseState
             return;
         }
 
-        // 낙하 중이고 LedgeDetection이 모서리를 감지했을 때 → HangState
+        // 낙하 중이고 CheckLedge가 모서리를 감지했을 때 → HangState
         if (data.isLedgeGrabbed && data.isFalling)
         {
             data.isLedgeGrabbed = false;

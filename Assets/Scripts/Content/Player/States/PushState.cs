@@ -35,7 +35,7 @@ public class PushState : PlayerBaseState
         }
 
         float vel = data.moveHorizontalInput.x * data.pushSpeed;
-        fsm.SetMoveVelocity(vel, 0f);
+        fsm.SetMoveVelocity(new Vector2(vel, 0f));
         _pushable.SetHorizontalVelocity(vel);
 
         // ── 애니메이션 ──
@@ -47,6 +47,6 @@ public class PushState : PlayerBaseState
         if (_pushable != null)
             _pushable.SetHorizontalVelocity(0f);
         _pushable = null;
-        fsm.SetMoveVelocity(0f, 0f);
+        fsm.SetMoveVelocity(Vector2.zero);
     }
 }

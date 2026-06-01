@@ -24,14 +24,18 @@ public class PlayerFSM : MonoBehaviour
     public PlayerBaseState KilledState { get; private set; }
     public PlayerBaseState HangState { get; private set; }
 
+    [Header("Ledge Detection")]
+    [SerializeField] private Transform _wallCheck;
+    [SerializeField] private Transform _ledgeCheck;
+    private bool _isTouchingWall;
+    private bool _isTouchingLedge;
+    private Vector2 _ledgeDownRayStart;
+
     [Header("Physics")]
     [SerializeField] private Vector2 _moveVelocity; // 사용자 입력으로 인한 속도
     [SerializeField] private Vector2 _externalVelocity; // 외부 관성에 의한 속도
     [SerializeField] private Vector2 _finalVelocity; // _moveVelocity + _externalVelocity 합산 결과
     public Vector2 lastDir; // 플레이어가 바라보는 마지막 방향
-
-    private readonly float SkinWidth = 0.02f; // 콜라이더 겉을 감싸는 얇은 막, 충돌 버그 방지
-    private readonly int RayCount = 3; // 플레이어의 콜라이더를 RayCount로 등분해서 Ray를 쏜다
 
     // Lift Boost
     [SerializeField] private Vector2 _liftVelocity; // 플랫폼에 의한 속도
@@ -42,6 +46,10 @@ public class PlayerFSM : MonoBehaviour
     private Vector2 _lastPlatformPosition;
 
     private float _jumpBufferTimer = 0f;
+    private float _coyoteTimer = 0f; // 마지막으로 grounded였던 시점 기준 잔여 coyote 시간
+
+    private readonly float SkinWidth = 0.02f; // 콜라이더 겉을 감싸는 얇은 막, 충돌 버그 방지
+    private readonly int RayCount = 3; // 플레이어의 콜라이더를 RayCount로 등분해서 Ray를 쏜다
 
     private void Awake()
     {
@@ -103,6 +111,7 @@ public class PlayerFSM : MonoBehaviour
         CheckMovingPlatformPushing();
         CheckLadder();
         CheckPushable();
+        CheckLedge();
         ApplyLayerPriority(); // 레이어 우선 순위 결정
 
         // lastDir 갱신 및 스프라이트 좌우 플리핑 (HangState, LadderState 중에는 방향 고정)
@@ -113,6 +122,12 @@ public class PlayerFSM : MonoBehaviour
             scale.x = _playerData.moveHorizontalInput.x > 0 ? Mathf.Abs(scale.x) : -Mathf.Abs(scale.x);
             transform.localScale = scale;
         }
+
+        // Coyote 타이머: grounded면 충전, 공중이면 감소 (상태와 무관하게 중앙에서 관리)
+        if (_playerData.isGrounded)
+            _coyoteTimer = _playerData.coyoteTime;
+        else if (_coyoteTimer > 0f)
+            _coyoteTimer -= Time.deltaTime;
 
         // LiftBoost 타이머 감소
         if (_liftVelocityTimer > 0f)
@@ -147,6 +162,10 @@ public class PlayerFSM : MonoBehaviour
         return false;
     }
 
+    // ㅡㅡ Coyote: 잔여 시간 조회 / 소비 ㅡㅡ
+    public bool CoyoteAvailable => _coyoteTimer > 0f;
+    public void ConsumeCoyote() => _coyoteTimer = 0f;
+
     // ㅡㅡ 상태 전이 함수 ㅡㅡ
     public void TransitionTo(PlayerBaseState newState)
     {
@@ -164,7 +183,7 @@ public class PlayerFSM : MonoBehaviour
     }
 
     // ㅡㅡ 이동 관련 헬퍼 함수들 ㅡㅡ
-    public void SetMoveVelocity(float x, float y) => _moveVelocity = new Vector2(x, y);
+    public void SetMoveVelocity(Vector2 v) => _moveVelocity = v;
     public void SetMoveVelocityX(float x) => _moveVelocity.x = x;
     public void SetMoveVelocityY(float y) => _moveVelocity.y = y;
     public Vector2 GetMoveVelocity() => _moveVelocity;
@@ -250,6 +269,7 @@ public class PlayerFSM : MonoBehaviour
     private void ApplyPlatformDelta()
     {
         if (_currentPlatform == null) return;
+
         Vector2 delta = (Vector2)_currentPlatform.transform.position - _lastPlatformPosition;
         transform.position += (Vector3)delta;
         _lastPlatformPosition = _currentPlatform.transform.position;
@@ -297,6 +317,9 @@ public class PlayerFSM : MonoBehaviour
                 return;
             }
         }
+
+        // Platform을 감지하지 못하면 null로
+        _currentPlatform = null;
     }
 
     private void CheckLadder()
@@ -374,6 +397,45 @@ public class PlayerFSM : MonoBehaviour
         // 현재 추가 우선순위 규칙 없음
     }
 
+    // ── 모서리(Ledge) 감지 ──
+    private void CheckLedge()
+    {
+        if (_playerData.isHanging) return;
+
+        Vector2 rayDirection = new Vector2(Mathf.Sign(lastDir.x), 0f);
+
+        // wallHit의 hitPoint의 x좌표는 모서리의 x좌표로 확정지을 수 있음
+        // 모서리의 y좌표는 확정된 x좌표를 가지고 위에서 아래로 ray를 쏘면 구할 수 있음
+        RaycastHit2D wallHit = Physics2D.Raycast(_wallCheck.position, rayDirection, _playerData.ledgeRayDistance, _playerData.ledgeGroundLayer);
+        RaycastHit2D ledgeHit = Physics2D.Raycast(_ledgeCheck.position, rayDirection, _playerData.ledgeRayDistance, _playerData.ledgeGroundLayer);
+
+        _isTouchingWall = wallHit.collider != null;
+        _isTouchingLedge = ledgeHit.collider != null;
+
+        if (_isTouchingWall && !_isTouchingLedge && _playerData.isFalling)
+        {
+            _ledgeDownRayStart = new Vector2(wallHit.point.x + (rayDirection.x * _playerData.ledgeDownRayInset), _ledgeCheck.position.y); // 벽 표면에서 살짝 들어간 부분부터 시작
+            float downRayLength = _ledgeCheck.position.y - _wallCheck.position.y + _playerData.ledgeDownRayPadding; // 머리 -> 가슴 길이보다 조금 더 길게
+
+            RaycastHit2D cornerHit = Physics2D.Raycast(_ledgeDownRayStart, Vector2.down, downRayLength, _playerData.ledgeGroundLayer);
+
+            if (cornerHit.collider != null)
+            {
+                Vector2 cornerPosition = new Vector2(wallHit.point.x, cornerHit.point.y);
+                GrabLedge(cornerPosition);
+            }
+        }
+    }
+
+    private void GrabLedge(Vector2 cornerPos)
+    {
+        _playerData.ledgeCornerPos = cornerPos;
+        _playerData.ledgeGrabDir = Mathf.Sign(lastDir.x);
+        _playerData.isLedgeGrabbed = true;
+
+        SetMoveVelocity(Vector2.zero);
+    }
+
     // ── 입력 핸들러 ──
     private void HandleMoveInput(Vector2 dir) => _playerData.moveHorizontalInput = dir;
     private void HandleLadderMoveInput(Vector2 dir) => _playerData.MoveVerticalInput = dir;
@@ -399,6 +461,18 @@ public class PlayerFSM : MonoBehaviour
 
         _inputManager.OnSneakPressed -= HandleSneak;
         _inputManager.OnSneakReleased -= HandleSneakReleased;
+    }
+
+    private void OnDrawGizmos()
+    {
+        if (_wallCheck == null || _ledgeCheck == null) return;
+
+        Vector2 dir = new Vector2(Mathf.Sign(lastDir.x), 0f);
+        Gizmos.color = _isTouchingWall ? Color.red : Color.green;
+        Gizmos.DrawLine(_wallCheck.position, (Vector2)_wallCheck.position + dir * _playerData.ledgeRayDistance);
+
+        Gizmos.color = _isTouchingLedge ? Color.red : Color.cyan;
+        Gizmos.DrawLine(_ledgeCheck.position, (Vector2)_ledgeCheck.position + dir * _playerData.ledgeRayDistance);
     }
 }
 

@@ -46,7 +46,6 @@ GameObject:
   - component: {fileID: 6561582771071760063}
   - component: {fileID: 838136718753400594}
   - component: {fileID: 3107422294581001006}
-  - component: {fileID: 8547372868899986599}
   m_Layer: 31
   m_Name: Player
   m_TagString: Untagged
@@ -249,8 +248,14 @@ MonoBehaviour:
     maxFallSpeed: -20
     groundCheckDistance: 0.05
     coyoteTime: 0.1
-    jumpBufferTime: 0.05
+    jumpBufferTime: 0.1
     ledgeOffset: {x: 0.41, y: 0}
+    ledgeGroundLayer:
+      serializedVersion: 2
+      m_Bits: 128
+    ledgeRayDistance: 0.3
+    ledgeDownRayInset: 0.05
+    ledgeDownRayPadding: 0.2
     ledgeCornerPos: {x: 0, y: 0}
     ledgeGrabDir: 0
     isLedgeGrabbed: 0
@@ -278,8 +283,10 @@ MonoBehaviour:
     isNearLadder: 0
     isHolding: 0
     isDead: 0
-    groundGraceTime: 0.08
-    maxSlopeAngle: 45
+    maxLiftSpeedX: 8
+    maxLiftSpeedY: 6
+    liftDecayX: 16
+    liftVelocityRetainTime: 0.12
     standingColliderSize: {x: 0.7478561, y: 1.1271588}
     standingColliderOffset: {x: 0.045957774, y: -0.07653302}
     sneakColliderSize: {x: 0.7478561, y: 1.1271588}
@@ -287,8 +294,13 @@ MonoBehaviour:
     nearLadderCollider: {fileID: 0}
     nearHangerCollider: {fileID: 0}
     nearPushableCollider: {fileID: 0}
-  _velocity: {x: 0, y: 0}
+  _wallCheck: {fileID: 5144133758780038983}
+  _ledgeCheck: {fileID: 7203101379789456188}
+  _moveVelocity: {x: 0, y: 0}
+  _externalVelocity: {x: 0, y: 0}
+  _finalVelocity: {x: 0, y: 0}
   lastDir: {x: 0, y: 0}
+  _liftVelocity: {x: 0, y: 0}
 --- !u!114 &3107422294581001006
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -305,28 +317,6 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 1024
   detectionRange: 1.5
---- !u!114 &8547372868899986599
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6816418336615385229}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f24436f203e47c04b8cb6a2ae27ae58d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::LedgeDetection
-  rayDistance: 0.3
-  downRayInset: 0.05
-  downRayPadding: 0.2
-  wallCheck: {fileID: 5144133758780038983}
-  ledgeCheck: {fileID: 7203101379789456188}
-  groundLayer:
-    serializedVersion: 2
-    m_Bits: 128
-  isTouchingWall: 0
-  isTouchingLedge: 0
 --- !u!1 &6820252846193895475
 GameObject:
   m_ObjectHideFlags: 0

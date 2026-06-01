@@ -12,7 +12,7 @@ public class SneakMoveState : PlayerBaseState
 
     public override void Enter()
     {
-        fsm.SetMoveVelocity(0f, 0f);
+        fsm.SetMoveVelocity(Vector2.zero);
 
         fsm.Bc.size = data.standingColliderSize;
         fsm.Bc.offset = data.standingColliderOffset;
@@ -62,7 +62,7 @@ public class SneakMoveState : PlayerBaseState
 
         // 실제 velocity 적용
         float horizontalVel = data.moveHorizontalInput.x * data.sneakSpeed;
-        fsm.SetMoveVelocity(horizontalVel, 0f);
+        fsm.SetMoveVelocity(new Vector2(horizontalVel, 0f));
         PlayAnim();
     }
 
@@ -90,6 +90,7 @@ public class SneakMoveState : PlayerBaseState
     {
         bool isMoving = Mathf.Abs(data.moveHorizontalInput.x) > 0.001f;
         string target = isMoving ? PLAYER_SNEAK : PLAYER_SNEAKIDLE;
+
         if (!anim.GetCurrentAnimatorStateInfo(0).IsName(target))
             anim.Play(target);
     }

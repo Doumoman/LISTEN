@@ -9,7 +9,7 @@ public class LadderState : PlayerBaseState
 
     public override void Enter()
     {
-        fsm.SetMoveVelocity(0f, 0f);
+        fsm.SetMoveVelocity(Vector2.zero);
         PlayAnim();
 
         _ladderCollider = data.nearLadderCollider;
@@ -59,7 +59,7 @@ public class LadderState : PlayerBaseState
                 }
             }
 
-            fsm.SetMoveVelocity(0f, verticalVel);
+            fsm.SetMoveVelocity(new Vector2(0f, verticalVel));
 
             anim.speed = Mathf.Abs(data.MoveVerticalInput.y) > 0.001f ? 1f : 0f;
             PlayAnim();
@@ -73,7 +73,7 @@ public class LadderState : PlayerBaseState
     public override void Exit()
     {
         anim.speed = 1f;
-        fsm.SetMoveVelocity(0f, 0f);
+        fsm.SetMoveVelocity(Vector2.zero);
     }
 
     private void PlayAnim()

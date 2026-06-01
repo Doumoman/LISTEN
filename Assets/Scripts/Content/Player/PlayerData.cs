@@ -17,10 +17,14 @@ public class PlayerData
     public float maxFallSpeed = -20f; // 낙하 최고 스피드
     public float groundCheckDistance = 0.05f; // 커질수록 ground 감지하는 ray가 길어짐
     public float coyoteTime = 0.1f; // 낙하 후 점프 허용 시간
-    public float jumpBufferTime = 0.15f; // 착지 직전 점프 입력 유효 시간
+    public float jumpBufferTime = 0.05f; // 착지 직전 점프 입력 유효 시간
 
-    [Header("매달리기")]
-    public Vector2 ledgeOffset;
+    [Header("Ledge 감지")]
+    public Vector2 ledgeOffset = new Vector2(0.41f, 0f);
+    public LayerMask ledgeGroundLayer; // ledge 감지 대상 레이어
+    public float ledgeRayDistance = 0.3f; // 벽/모서리 감지 ray 길이
+    public float ledgeDownRayInset = 0.05f; // 하향 ray 시작점의 벽 내부 진입 오프셋
+    public float ledgeDownRayPadding = 0.2f; // 하향 ray 길이 여유분
     public Vector2 ledgeCornerPos;
     public float ledgeGrabDir; // 레지 감지 순간의 방향 (+1 or -1)
     public bool isLedgeGrabbed; // 매달려야 한다고 알려주는 1회성 플래그

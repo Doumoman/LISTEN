@@ -16,7 +16,8 @@ public class MoveState : PlayerBaseState
             fsm.TransitionTo(fsm.AirborneState);
             return;
         }
-        fsm.SetMoveVelocity(0f, 0f);
+
+        fsm.SetMoveVelocity(Vector2.zero);
         PlayMoveAnim();
     }
 
@@ -59,7 +60,7 @@ public class MoveState : PlayerBaseState
 
         // 이동 처리
         float targetVel = data.moveHorizontalInput.x * data.moveSpeed;
-        fsm.SetMoveVelocity(targetVel, 0f);
+        fsm.SetMoveVelocity(new Vector2(targetVel, 0f));
 
         // 애니메이션
         PlayMoveAnim();
