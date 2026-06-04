@@ -1,5 +1,36 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!1 &1794021121991965358
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3234316048312572551}
+  m_Layer: 0
+  m_Name: HoldPoint
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3234316048312572551
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1794021121991965358}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0.4, y: -0.3, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 967656970958458871}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2021761523383127956
 GameObject:
   m_ObjectHideFlags: 0
@@ -68,6 +99,7 @@ Transform:
   m_Children:
   - {fileID: 5144133758780038983}
   - {fileID: 7203101379789456188}
+  - {fileID: 3234316048312572551}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!212 &8838931982091366710
@@ -271,6 +303,9 @@ MonoBehaviour:
     pushableLayer:
       serializedVersion: 2
       m_Bits: 512
+    holdableLayer:
+      serializedVersion: 2
+      m_Bits: 131072
     moveHorizontalInput: {x: 0, y: 0}
     MoveVerticalInput: {x: 0, y: 0}
     isJumpRequested: 0
@@ -283,6 +318,9 @@ MonoBehaviour:
     isNearLadder: 0
     isHolding: 0
     isDead: 0
+    throwSpeed: 15
+    throwAngleSpeed: 90
+    throwGravity: -30
     platformPushBuffer: 0.2
     maxLiftSpeedX: 8
     maxLiftSpeedY: 6
@@ -297,6 +335,7 @@ MonoBehaviour:
     nearPushableCollider: {fileID: 0}
   _wallCheck: {fileID: 5144133758780038983}
   _ledgeCheck: {fileID: 7203101379789456188}
+  _holdPoint: {fileID: 3234316048312572551}
   _moveVelocity: {x: 0, y: 0}
   _externalVelocity: {x: 0, y: 0}
   _finalVelocity: {x: 0, y: 0}

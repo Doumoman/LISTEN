@@ -22,45 +22,22 @@ public abstract class PlayerBaseState
 
     protected void PlayClip(string clipName)
     {
-        if (!string.IsNullOrEmpty(clipName))
+        if (string.IsNullOrEmpty(clipName)) return;
+        if (!anim.GetCurrentAnimatorStateInfo(0).IsName(clipName))
             anim.Play(clipName);
-    }
-
-    protected void PlayAnimation(PlayerBaseState state)
-    {
-        int dir = fsm.GetDirectionIndex();
-        string clip = null;
-
-        if (state == fsm.MoveState)
-        {
-            bool isMoving = Mathf.Abs(data.moveHorizontalInput.x) > 0.01f;
-            // TODO : 방향에 따른 애니메이션 출력
-        }
-        else if (state == fsm.SneakMoveState)
-        {
-            bool isMoving = Mathf.Abs(data.moveHorizontalInput.x) > 0.01f;
-            // TODO : 방향에 따른 애니메이션 출력
-
-        }
-        else if (state == fsm.AirborneState) { clip = AnimClips.Airborne; }
-        else if (state == fsm.LadderState) { clip = AnimClips.Ladder; }
-        else if (state == fsm.HangState) { clip = AnimClips.Hanging; }
-        else if (state == fsm.KilledState) { clip = AnimClips.Death; }
-
-        if (!string.IsNullOrEmpty(clip))
-            anim.Play(clip);
     }
 }
 
 public static class AnimClips
 {
-    public const string Idle = "Idle";
-    public const string Walk = "Walk";
-    public const string Jump = "Jump";
+    public const string Idle = "Player_Idle";
+    public const string Move = "Player_Move";
+    public const string SneakIdle = "Player_SneakIdle";
+    public const string SneakMove = "Player_Sneak";
+    public const string Ladder = "Player_Ladder";
+
+    // TODO: Animator 상태명 확인 후 수정 필요
     public const string Airborne = "Airborne";
     public const string Hanging = "Hanging";
-    public const string SneakIdle = "SneakIdle";
-    public const string SneakWalk = "SneakWalk";
-    public const string Ladder = "Ladder";
     public const string Death = "Death";
 }

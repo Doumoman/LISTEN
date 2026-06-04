@@ -34,6 +34,7 @@ public class PlayerData
     public LayerMask groundLayer;
     public LayerMask ladderLayer;
     public LayerMask pushableLayer;
+    public LayerMask holdableLayer; // 주울 수 있는 물체 레이어
 
     [Header("런타임 플래그")]
     public Vector2 moveHorizontalInput; // 입력받은 좌우 이동 방향
@@ -48,6 +49,11 @@ public class PlayerData
     public bool isNearLadder; // 사다리 감지
     public bool isHolding; // 물체를 들고 있는지
     public bool isDead; // 플레이어 사망 여부
+
+    [Header("Holdable")]
+    public float throwSpeed = 15f; // 던지기 속도
+    public float throwAngleSpeed = 90f; // 각도 조절 속도 (도/초)
+    public float throwGravity = -30f; // 던진 물체에 적용할 중력
 
     [Header("Moving Platform")]
     public float platformPushBuffer = 0.05f; // 빠른 플랫폼 감지 Ray 여유분 (프레임당 플랫폼 이동량 커버)

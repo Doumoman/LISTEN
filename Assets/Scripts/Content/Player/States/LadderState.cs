@@ -2,8 +2,6 @@
 
 public class LadderState : PlayerBaseState
 {
-    private const string PLAYER_LADDER = "Player_Ladder";
-
     public LadderState(PlayerFSM fsm) : base(fsm) { }
     private Collider2D _ladderCollider;
 
@@ -78,9 +76,5 @@ public class LadderState : PlayerBaseState
         fsm.SetMoveVelocity(Vector2.zero);
     }
 
-    private void PlayAnim()
-    {
-        if (!anim.GetCurrentAnimatorStateInfo(0).IsName(PLAYER_LADDER))
-            anim.Play(PLAYER_LADDER);
-    }
+    private void PlayAnim() => PlayClip(AnimClips.Ladder);
 }

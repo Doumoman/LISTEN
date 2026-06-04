@@ -2,8 +2,6 @@
 
 public class SneakMoveState : PlayerBaseState
 {
-    private const string PLAYER_SNEAK = "Player_Sneak";
-    private const string PLAYER_SNEAKIDLE = "Player_SneakIdle";
     private const float TRANSITION_DURATION = 0.12f;
 
     private float _colliderT = 0f; // 0 = 서있기, 1 = 웅크리기
@@ -57,8 +55,20 @@ public class SneakMoveState : PlayerBaseState
             return;
         }
 
-        // TODO: 엎드린 상태에서 상호작용 키 누르면 물체 주움
-
+        // 상호작용 키 처리
+        if (fsm.ConsumeInteract())
+        {
+            if (data.isHolding)
+            {
+                fsm.Throw();
+            }
+            else
+            {
+                IHoldable holdable = DetectHoldable();
+                if (holdable != null)
+                    fsm.PickUp(holdable);
+            }
+        }
 
         // 실제 velocity 적용
         float horizontalVel = data.moveHorizontalInput.x * data.sneakSpeed;
@@ -86,12 +96,19 @@ public class SneakMoveState : PlayerBaseState
         fsm.transform.position = pos;
     }
 
+    private IHoldable DetectHoldable()
+    {
+        Vector2 center = (Vector2)fsm.transform.position + fsm.Bc.offset;
+        Collider2D hit = Physics2D.OverlapBox(center, fsm.Bc.size, 0f, data.holdableLayer);
+        if (hit != null)
+            return hit.GetComponent<IHoldable>();
+
+        return null;
+    }
+
     private void PlayAnim()
     {
         bool isMoving = Mathf.Abs(data.moveHorizontalInput.x) > 0.001f;
-        string target = isMoving ? PLAYER_SNEAK : PLAYER_SNEAKIDLE;
-
-        if (!anim.GetCurrentAnimatorStateInfo(0).IsName(target))
-            anim.Play(target);
+        PlayClip(isMoving ? AnimClips.SneakMove : AnimClips.SneakIdle);
     }
 }

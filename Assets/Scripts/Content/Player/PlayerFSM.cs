@@ -31,6 +31,12 @@ public class PlayerFSM : MonoBehaviour
     private bool _isTouchingLedge;
     private Vector2 _ledgeDownRayStart;
 
+    [Header("Holdable")]
+    [SerializeField] private Transform _holdPoint; // 물체가 붙는 위치
+    private IHoldable _heldObject;
+    private float _throwAngle; // 현재 던지기 각도 (도)
+    private bool _interactPressed;
+
     [Header("Physics")]
     [SerializeField] private Vector2 _moveVelocity; // 사용자 입력으로 인한 속도
     [SerializeField] private Vector2 _externalVelocity; // 외부 관성에 의한 속도
@@ -92,6 +98,9 @@ public class PlayerFSM : MonoBehaviour
         _inputManager.OnSneakReleased -= HandleSneakReleased;
         _inputManager.OnSneakReleased += HandleSneakReleased;
 
+        _inputManager.OnInteractPressed -= HandleInteract;
+        _inputManager.OnInteractPressed += HandleInteract;
+
         lastDir = Vector2.right;
         TransitionTo(MoveState); // 초기 상태
     }
@@ -137,6 +146,16 @@ public class PlayerFSM : MonoBehaviour
         if (!_playerData.isGrounded)
             _externalVelocity.x = Mathf.MoveTowards(_externalVelocity.x, 0f, _playerData.liftDecayX * Time.deltaTime);
 
+        // Holdable 던지기 각도 조절
+        if (_playerData.isHolding)
+        {
+            float verticalInput = _playerData.MoveVerticalInput.y;
+            if (Mathf.Abs(verticalInput) > 0.001f)
+                _throwAngle = Mathf.MoveTowards(_throwAngle, verticalInput > 0f ? 45f : -45f, _playerData.throwAngleSpeed * Time.deltaTime);
+            else
+                _throwAngle = Mathf.MoveTowards(_throwAngle, 0f, _playerData.throwAngleSpeed * Time.deltaTime);
+        }
+
         _currentState?.Update();
         _finalVelocity = _moveVelocity + _externalVelocity;
         ApplyMovement(); // 실제 움직임 적용
@@ -144,8 +163,10 @@ public class PlayerFSM : MonoBehaviour
 
     private void LateUpdate()
     {
-        // 1프레임 소비 플래그 초기화
+        // 입력 플래그가 정확히 1프레임만 살아있게 해준다
+        // 해당 프레임의 Update() 로직이 완전히 끝난 후 초기화가 보장된다
         _playerData.isJumpRequested = false;
+        _interactPressed = false;
 
         if (_jumpBufferTimer > 0f)
             _jumpBufferTimer -= Time.deltaTime;
@@ -165,6 +186,43 @@ public class PlayerFSM : MonoBehaviour
     // ㅡㅡ Coyote: 잔여 시간 조회 / 소비 ㅡㅡ
     public bool CoyoteAvailable => _coyoteTimer > 0f;
     public void ConsumeCoyote() => _coyoteTimer = 0f;
+
+    // ㅡㅡ Interact 입력 소비 ㅡㅡ
+    public bool ConsumeInteract()
+    {
+        if (_interactPressed)
+        {
+            _interactPressed = false;
+            return true;
+        }
+        return false;
+    }
+
+    // ㅡㅡ 물체 줍기 / 던지기 ㅡㅡ
+    public void PickUp(IHoldable holdable)
+    {
+        _heldObject = holdable;
+        _playerData.isHolding = true;
+        _throwAngle = 0f;
+        holdable.OnPickedUp(_holdPoint);
+    }
+
+    public void Throw()
+    {
+        if (_heldObject == null) return;
+
+        float rad = _throwAngle * Mathf.Deg2Rad;
+        float facingDir = Mathf.Sign(lastDir.x);
+        Vector2 direction = new Vector2(Mathf.Cos(rad) * facingDir, Mathf.Sin(rad));
+        Vector2 velocity = direction * _playerData.throwSpeed;
+
+        _heldObject.OnThrown(velocity, _playerData.throwGravity, _playerData.collisionLayer);
+        _heldObject = null;
+        _playerData.isHolding = false;
+        _throwAngle = 0f;
+    }
+
+    public float ThrowAngle => _throwAngle;
 
     // ㅡㅡ 상태 전이 함수 ㅡㅡ
     public void TransitionTo(PlayerBaseState newState)
@@ -517,6 +575,7 @@ public class PlayerFSM : MonoBehaviour
     private void HandleJumpReleased() => _playerData.isJumpHeld = false;
     private void HandleSneak() => _playerData.isSneakHeld = true;
     private void HandleSneakReleased() => _playerData.isSneakHeld = false;
+    private void HandleInteract() => _interactPressed = true;
 
     private void OnDestroy()
     {
@@ -530,6 +589,8 @@ public class PlayerFSM : MonoBehaviour
 
         _inputManager.OnSneakPressed -= HandleSneak;
         _inputManager.OnSneakReleased -= HandleSneakReleased;
+
+        _inputManager.OnInteractPressed -= HandleInteract;
     }
 
     private void OnDrawGizmos()

@@ -2,7 +2,6 @@
 
 public class AirborneState : PlayerBaseState
 {
-    private const string PLAYER_MOVE = "Player_Move";
 
     private float jumpHoldTime = 0f;
     private bool isJumping = false;
@@ -69,6 +68,12 @@ public class AirborneState : PlayerBaseState
 
         fsm.SetMoveVelocity(vel);
 
+        // 물체 던지기
+        if (data.isHolding && fsm.ConsumeInteract())
+        {
+            fsm.Throw();
+        }
+
         // 착지 → MoveState
         if (data.isGrounded && vel.y <= 0f)
         {
@@ -97,9 +102,5 @@ public class AirborneState : PlayerBaseState
 
     public override void Exit() { }
 
-    private void PlayAnim()
-    {
-        if (!anim.GetCurrentAnimatorStateInfo(0).IsName(PLAYER_MOVE))
-            anim.Play(PLAYER_MOVE);
-    }
+    private void PlayAnim() => PlayClip(AnimClips.Move);
 }

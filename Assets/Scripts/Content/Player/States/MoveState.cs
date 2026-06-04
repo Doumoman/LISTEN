@@ -4,8 +4,6 @@ public class MoveState : PlayerBaseState
 {
     public MoveState(PlayerFSM fsm) : base(fsm) { }
 
-    private const string PLAYER_MOVE = "Player_Move";
-    private const string PLAYER_IDLE = "Player_Idle";
 
     public override void Enter()
     {
@@ -58,6 +56,12 @@ public class MoveState : PlayerBaseState
             return;
         }
 
+        // 물체 던지기
+        if (data.isHolding && fsm.ConsumeInteract())
+        {
+            fsm.Throw();
+        }
+
         // 이동 처리
         float targetVel = data.moveHorizontalInput.x * data.moveSpeed;
         fsm.SetMoveVelocity(new Vector2(targetVel, 0f));
@@ -71,9 +75,6 @@ public class MoveState : PlayerBaseState
     private void PlayMoveAnim()
     {
         bool isMoving = Mathf.Abs(data.moveHorizontalInput.x) > 0.001f;
-        string target = isMoving ? PLAYER_MOVE : PLAYER_IDLE;
-
-        if (!anim.GetCurrentAnimatorStateInfo(0).IsName(target))
-            anim.Play(target);
+        PlayClip(isMoving ? AnimClips.Move : AnimClips.Idle);
     }
 }
