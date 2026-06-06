@@ -36,6 +36,13 @@ public class PlayerData
     public LayerMask pushableLayer;
     public LayerMask holdableLayer; // 주울 수 있는 물체 레이어
 
+    [Header("Fluid")]
+    public float fluidMoveSpeedMultiplier = 0.55f;
+    public float fluidGravityMultiplier = 0.25f;
+    public float fluidBuoyancy = 18f;
+    public float fluidMaxFallSpeed = -3f;
+    public float fluidMaxRiseSpeed = 2.5f;
+
     [Header("런타임 플래그")]
     public Vector2 moveHorizontalInput; // 입력받은 좌우 이동 방향
     public Vector2 MoveVerticalInput; // 입력받은 상하 이동 방향
@@ -49,6 +56,9 @@ public class PlayerData
     public bool isNearLadder; // 사다리 감지
     public bool isHolding; // 물체를 들고 있는지
     public bool isDead; // 플레이어 사망 여부
+    public bool isInFluid;
+    public bool isInWater;
+    public bool isInLava;
 
     [Header("Holdable")]
     public float throwSpeed = 15f; // 던지기 속도

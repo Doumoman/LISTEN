@@ -5,12 +5,14 @@ public class FluidController : MonoBehaviour
 {
     private const string ChunkPrefabPath = "Prefabs/Map/Fluid/FluidChunk";
     private const string FluidParticleLayerName = "FluidParticle";
+    private const string PlayerLayerName = "Player";
 
     private const int CellsPerTile = 3;
     private const int MaxShaderParticles = 256;
 
     private static readonly List<FluidParticle> AllParticles = new List<FluidParticle>();
     private static readonly Dictionary<TileType, GlobalMetaballVisual> GlobalVisuals = new();
+    private static bool collisionConfigured;
 
     [Header("Init Data")]
     [SerializeField] private TileType fluidType;
@@ -212,6 +214,7 @@ public class FluidController : MonoBehaviour
 
     private void Awake()
     {
+        ConfigureFluidParticleCollisions();
         ResolveVisualReferences();
     }
 
@@ -340,6 +343,20 @@ public class FluidController : MonoBehaviour
             visualTransform = visual.transform,
             visualRadius = visualRadius
         };
+    }
+
+    private static void ConfigureFluidParticleCollisions()
+    {
+        if (collisionConfigured)
+            return;
+
+        int fluidLayer = LayerMask.NameToLayer(FluidParticleLayerName);
+        int playerLayer = LayerMask.NameToLayer(PlayerLayerName);
+
+        if (fluidLayer >= 0 && playerLayer >= 0)
+            Physics2D.IgnoreLayerCollision(fluidLayer, playerLayer, true);
+
+        collisionConfigured = true;
     }
 
     private SpriteRenderer CreateVisualRenderer(Transform parent, int layer)

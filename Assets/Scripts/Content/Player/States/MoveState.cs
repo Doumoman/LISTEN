@@ -63,7 +63,7 @@ public class MoveState : PlayerBaseState
         }
 
         // 이동 처리
-        float targetVel = data.moveHorizontalInput.x * data.moveSpeed;
+        float targetVel = data.moveHorizontalInput.x * data.moveSpeed * fsm.FluidMoveSpeedMultiplier;
         fsm.SetMoveVelocity(new Vector2(targetVel, 0f));
 
         // 애니메이션

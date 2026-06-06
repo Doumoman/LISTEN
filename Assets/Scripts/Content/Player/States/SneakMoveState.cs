@@ -71,7 +71,7 @@ public class SneakMoveState : PlayerBaseState
         }
 
         // 실제 velocity 적용
-        float horizontalVel = data.moveHorizontalInput.x * data.sneakSpeed;
+        float horizontalVel = data.moveHorizontalInput.x * data.sneakSpeed * fsm.FluidMoveSpeedMultiplier;
         fsm.SetMoveVelocity(new Vector2(horizontalVel, 0f));
         PlayAnim();
     }

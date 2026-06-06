@@ -62,9 +62,19 @@ public class AirborneState : PlayerBaseState
             data.isFalling = true;
         }
 
-        vel.y += effectiveGravity * Time.deltaTime;
-        vel.y = Mathf.Max(vel.y, data.maxFallSpeed);
-        vel.x = data.moveHorizontalInput.x * data.moveSpeed;
+        if (data.isInFluid)
+        {
+            vel.y += effectiveGravity * data.fluidGravityMultiplier * Time.deltaTime;
+            vel.y += data.fluidBuoyancy * Time.deltaTime;
+            vel.y = Mathf.Clamp(vel.y, data.fluidMaxFallSpeed, data.fluidMaxRiseSpeed);
+        }
+        else
+        {
+            vel.y += effectiveGravity * Time.deltaTime;
+            vel.y = Mathf.Max(vel.y, data.maxFallSpeed);
+        }
+
+        vel.x = data.moveHorizontalInput.x * data.moveSpeed * fsm.FluidMoveSpeedMultiplier;
 
         fsm.SetMoveVelocity(vel);
 

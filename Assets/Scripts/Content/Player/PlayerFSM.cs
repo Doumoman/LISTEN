@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using System.Collections.Generic;
 using UnityEngine.InputSystem;
 
 [RequireComponent(typeof(Rigidbody2D), typeof(BoxCollider2D), typeof(Animator))]
@@ -50,6 +51,7 @@ public class PlayerFSM : MonoBehaviour
     // 플레이어가 추적하는 MovingPlatform
     private MovingPlatformController _currentPlatform;
     private Vector2 _lastPlatformPosition;
+    private readonly HashSet<Collider2D> _fluidContacts = new HashSet<Collider2D>();
 
     private float _jumpBufferTimer = 0f;
     private float _coyoteTimer = 0f; // 마지막으로 grounded였던 시점 기준 잔여 coyote 시간
@@ -121,6 +123,7 @@ public class PlayerFSM : MonoBehaviour
         CheckLadder();
         CheckPushable();
         CheckLedge();
+        UpdateFluidState();
         ApplyLayerPriority(); // 레이어 우선 순위 결정
 
         // lastDir 갱신 및 스프라이트 좌우 플리핑 (HangState, LadderState 중에는 방향 고정)
@@ -253,6 +256,7 @@ public class PlayerFSM : MonoBehaviour
     public void SetExternalVelocityY(float y) => _externalVelocity.y = y;
     public void AddExternalVelocity(Vector2 v) => _externalVelocity += v;
     public Vector2 GetLiftVelocity() => _liftVelocityTimer > 0f ? _liftVelocity : Vector2.zero;
+    public float FluidMoveSpeedMultiplier => _playerData.isInFluid ? _playerData.fluidMoveSpeedMultiplier : 1f;
 
     // ── 이동 + 충돌 처리 ──
     private void ApplyMovement()
@@ -552,6 +556,76 @@ public class PlayerFSM : MonoBehaviour
                 GrabLedge(cornerPosition);
             }
         }
+    }
+
+    private void OnTriggerEnter2D(Collider2D other)
+    {
+        if (IsFluidTrigger(other))
+            _fluidContacts.Add(other);
+    }
+
+    private void OnTriggerStay2D(Collider2D other)
+    {
+        if (IsFluidTrigger(other))
+            _fluidContacts.Add(other);
+    }
+
+    private void OnTriggerExit2D(Collider2D other)
+    {
+        if (other != null)
+            _fluidContacts.Remove(other);
+
+        UpdateFluidState();
+    }
+
+    private void UpdateFluidState()
+    {
+        _fluidContacts.RemoveWhere(col => col == null || !col.enabled || !col.gameObject.activeInHierarchy);
+
+        bool inWater = false;
+        bool inLava = false;
+
+        foreach (Collider2D col in _fluidContacts)
+        {
+            if (IsNamedFluid(col, "Water"))
+                inWater = true;
+
+            if (IsNamedFluid(col, "Lava"))
+                inLava = true;
+        }
+
+        _playerData.isInWater = inWater;
+        _playerData.isInLava = inLava;
+        _playerData.isInFluid = inWater || inLava;
+    }
+
+    private bool IsFluidTrigger(Collider2D col)
+    {
+        if (col == null || !col.isTrigger)
+            return false;
+
+        return IsNamedFluid(col, "Water") || IsNamedFluid(col, "Lava");
+    }
+
+    private bool IsNamedFluid(Collider2D col, string fluidName)
+    {
+        if (col == null)
+            return false;
+
+        int layer = LayerMask.NameToLayer(fluidName);
+        if (layer >= 0 && col.gameObject.layer == layer)
+            return true;
+
+        Transform current = col.transform;
+        while (current != null)
+        {
+            if (current.name == fluidName)
+                return true;
+
+            current = current.parent;
+        }
+
+        return false;
     }
 
     private void GrabLedge(Vector2 cornerPos)
