@@ -3,6 +3,8 @@ using UnityEngine;
 
 public class UI_Popup_FileSelect : UI_Popup
 {
+    private const string SaveSlotNameKeyPrefix = "SaveSlotName_";
+
     enum GameObjects
     {
         FileSlot_0,
@@ -58,7 +60,7 @@ public class UI_Popup_FileSelect : UI_Popup
 
         for (int i = 0; i < _slots.Length; i++)
         {
-            _slots[i].SetEmpty(i);
+            RefreshSlotName(i);
         }
 
         RefreshFocus();
@@ -290,6 +292,51 @@ public class UI_Popup_FileSelect : UI_Popup
     actionPopup.SetFileSlot(_selectedIndex);
     actionPopup.SetOwner(this);
 }
+
+    public string GetSlotNameForRename(int slotIndex)
+    {
+        if (!HasCustomSlotName(slotIndex))
+            return "";
+
+        return PlayerPrefs.GetString(GetSlotNameKey(slotIndex), "");
+    }
+
+    public void RenameSlot(int slotIndex, string newName)
+    {
+        if (slotIndex < 0 || slotIndex >= _slots.Length)
+            return;
+
+        string trimmedName = newName.Trim();
+
+        if (string.IsNullOrWhiteSpace(trimmedName))
+            return;
+
+        PlayerPrefs.SetString(GetSlotNameKey(slotIndex), trimmedName);
+        PlayerPrefs.Save();
+
+        RefreshSlotName(slotIndex);
+    }
+
+    private void RefreshSlotName(int slotIndex)
+    {
+        if (slotIndex < 0 || slotIndex >= _slots.Length || _slots[slotIndex] == null)
+            return;
+
+        if (HasCustomSlotName(slotIndex))
+            _slots[slotIndex].SetName(PlayerPrefs.GetString(GetSlotNameKey(slotIndex)));
+        else
+            _slots[slotIndex].SetEmpty(slotIndex);
+    }
+
+    private bool HasCustomSlotName(int slotIndex)
+    {
+        return PlayerPrefs.HasKey(GetSlotNameKey(slotIndex));
+    }
+
+    private string GetSlotNameKey(int slotIndex)
+    {
+        return $"{SaveSlotNameKeyPrefix}{slotIndex}";
+    }
 
     public override void OnCancel()
     {

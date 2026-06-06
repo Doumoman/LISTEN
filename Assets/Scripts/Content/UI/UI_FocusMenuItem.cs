@@ -38,9 +38,6 @@ public class UI_FocusMenuItem : MonoBehaviour
         Color color = selected ? _selectedColor : _normalColor;
         float scale = selected ? _selectedScale : _normalScale;
 
-        if (_icon != null)
-            //_icon.color = color;
-
         if (_label != null)
             _label.color = color;
 

@@ -17,14 +17,19 @@ public class UI_SaveSlotItem : MonoBehaviour
 
     public void SetEmpty(int slotIndex)
     {
-        if (_nameText != null)
-            _nameText.text = $"빈 파일 {slotIndex + 1}";
+        SetName($"빈 파일 {slotIndex + 1}");
 
         if (_infoText != null)
             _infoText.text = "새로운 이야기를 시작합니다.";
 
         if (_portraitImage != null)
             _portraitImage.enabled = false;
+    }
+
+    public void SetName(string fileName)
+    {
+        if (_nameText != null)
+            _nameText.text = fileName;
     }
 
     public void SetSelected(bool selected)

@@ -205,8 +205,21 @@ public class UI_Popup_FileAction : UI_Popup
 
         Debug.Log($"파일 {_fileSlotIndex + 1}번 이름 바꾸기");
 
-        // 나중에 이름 입력 팝업 연결
-        // SingletonManagers.UI.ShowPopupUI<UI_Popup_RenameFile>();
+        UI_Popup_RenameFile renamePopup = SingletonManagers.UI.ShowPopupUI<UI_Popup_RenameFile>();
+
+        if (renamePopup == null)
+        {
+            Debug.LogError("[FileAction] RenameFile 팝업 생성 실패");
+            return;
+        }
+
+        string currentName = _owner != null ? _owner.GetSlotNameForRename(_fileSlotIndex) : "";
+        renamePopup.Setup(_owner, this, _fileSlotIndex, currentName);
+    }
+
+    public void CloseAfterRename()
+    {
+        ClosePopupUI();
     }
 
     public override void OnCancel()
