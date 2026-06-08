@@ -4,11 +4,20 @@ using UnityEditor;
 [CustomEditor(typeof(TileMapData))]
 public class TileMapEditor : Editor
 {
+    private enum EditMode
+    {
+        Tiles,
+        CameraRooms
+    }
+
+    private EditMode _editMode = EditMode.Tiles;
     private TileType _selected = TileType.Ground;
     private Vector2 _colliderSize = Vector2.one;
 
     private bool _hasSelectedMovingPlatform;
     private Vector2Int _selectedMovingPlatformGrid;
+    private bool _hasCameraRoomStart;
+    private Vector2Int _cameraRoomStartGrid;
 
     private static readonly string[] Names =
     {
@@ -26,6 +35,15 @@ public class TileMapEditor : Editor
     public override void OnInspectorGUI()
     {
         TileMapData map = (TileMapData)target;
+
+        _editMode = (EditMode)GUILayout.Toolbar((int)_editMode, new[] { "Tiles", "Camera Rooms" });
+        EditorGUILayout.Space(8);
+
+        if (_editMode == EditMode.CameraRooms)
+        {
+            DrawCameraRoomInspector(map);
+            return;
+        }
 
         EditorGUILayout.LabelField("Tile Palette", EditorStyles.boldLabel);
         EditorGUILayout.Space(2);
@@ -132,6 +150,59 @@ public class TileMapEditor : Editor
         EditorGUILayout.LabelField($"타일 수: {map.Tiles.Count}", EditorStyles.miniLabel);
     }
 
+    private void DrawCameraRoomInspector(TileMapData map)
+    {
+        EditorGUILayout.LabelField("Camera Rooms", EditorStyles.boldLabel);
+        EditorGUILayout.HelpBox(
+            "Scene 뷰에서 카메라가 비출 화면 단위 영역을 지정합니다.\n" +
+            "런타임 카메라는 방 안에서 플레이어를 따라가되, 룸 밖을 비추지 않도록 제한됩니다.\n" +
+            "다른 룸으로 넘어가면 잠깐 시간이 멈추고 카메라가 다음 룸으로 전환됩니다.\n\n" +
+            "Camera Room은 카메라가 비출 수 있는 전체 영역입니다.\n" +
+            "실제 화면 크기는 Main Camera의 CameraController > Visible Area에서 조절하세요.\n" +
+            "2560x1440 기준이면 Reference Resolution을 2560 x 1440으로 두고 Visible Area World Height를 조절하면 됩니다.\n\n" +
+            "LMB = 시작 지점 지정\n" +
+            "RMB = 끝 지점 지정 후 영역 생성\n" +
+            "Shift + LMB = 커서 위치의 영역 삭제",
+            MessageType.Info);
+
+        string startText = _hasCameraRoomStart
+            ? $"시작 지점: {_cameraRoomStartGrid}"
+            : "시작 지점 없음";
+
+        EditorGUILayout.LabelField(startText, EditorStyles.miniLabel);
+
+        using (new EditorGUI.DisabledScope(!_hasCameraRoomStart))
+        {
+            if (GUILayout.Button("Cancel Start Point"))
+                _hasCameraRoomStart = false;
+        }
+
+        EditorGUILayout.Space(4);
+
+        if (GUILayout.Button("Clear Camera Rooms") &&
+            EditorUtility.DisplayDialog("Clear Camera Rooms", "모든 카메라 영역을 삭제합니다.", "삭제", "취소"))
+        {
+            Undo.RecordObject(target, "Clear Camera Rooms");
+            map.ClearCameraRooms();
+            _hasCameraRoomStart = false;
+            EditorUtility.SetDirty(target);
+            SceneView.RepaintAll();
+        }
+
+        EditorGUILayout.Space(6);
+        EditorGUILayout.LabelField($"카메라 영역 수: {map.CameraRooms.Count}", EditorStyles.miniLabel);
+
+        for (int i = 0; i < map.CameraRooms.Count; i++)
+        {
+            CameraRoomData room = map.CameraRooms[i];
+            Rect rect = map.GetCameraRoomWorldRect(room);
+
+            EditorGUILayout.LabelField(
+                $"{i + 1}. {room.roomName}",
+                $"{room.startGridPos} -> {room.endGridPos} / {rect.width:F0} x {rect.height:F0}");
+        }
+    }
+
     private void OnSceneGUI()
     {
         TileMapData map = (TileMapData)target;
@@ -146,6 +217,16 @@ public class TileMapEditor : Editor
         Vector2Int gridPos = map.WorldToGrid(ray.origin);
 
         DrawGridOverlay(map);
+
+        if (_editMode == EditMode.CameraRooms)
+        {
+            DrawCameraRooms(map);
+            DrawCameraRoomCursor(map, gridPos);
+            HandleCameraRoomInput(map, e, gridPos);
+            SceneView.RepaintAll();
+            return;
+        }
+
         DrawCursor(map, gridPos);
         DrawSelectedMovingPlatformGuide(map, gridPos);
 
@@ -155,6 +236,106 @@ public class TileMapEditor : Editor
             HandleDefaultTileInput(map, e, gridPos);
 
         SceneView.RepaintAll();
+    }
+
+    private void HandleCameraRoomInput(TileMapData map, Event e, Vector2Int gridPos)
+    {
+        if (e.type != EventType.MouseDown)
+            return;
+
+        if (e.shift && e.button == 0)
+        {
+            Undo.RecordObject(target, "Remove Camera Room");
+
+            if (map.RemoveCameraRoomAt(gridPos))
+            {
+                EditorUtility.SetDirty(target);
+                _hasCameraRoomStart = false;
+            }
+
+            e.Use();
+            return;
+        }
+
+        if (e.button == 0)
+        {
+            _cameraRoomStartGrid = gridPos;
+            _hasCameraRoomStart = true;
+            e.Use();
+            return;
+        }
+
+        if (e.button == 1)
+        {
+            if (!_hasCameraRoomStart)
+            {
+                Debug.LogWarning("카메라 영역의 시작 지점을 먼저 좌클릭으로 지정하세요.");
+                e.Use();
+                return;
+            }
+
+            Undo.RecordObject(target, "Add Camera Room");
+            map.AddCameraRoom(_cameraRoomStartGrid, gridPos);
+            _hasCameraRoomStart = false;
+            EditorUtility.SetDirty(target);
+            e.Use();
+        }
+    }
+
+    private void DrawCameraRooms(TileMapData map)
+    {
+        for (int i = 0; i < map.CameraRooms.Count; i++)
+        {
+            CameraRoomData room = map.CameraRooms[i];
+            Rect rect = map.GetCameraRoomWorldRect(room);
+
+            Color fill = new Color(0.1f, 0.65f, 1f, 0.12f);
+            Color outline = new Color(0.1f, 0.75f, 1f, 0.95f);
+
+            Handles.DrawSolidRectangleWithOutline(rect, fill, outline);
+            Handles.Label(
+                new Vector3(rect.xMin + 0.25f, rect.yMax - 0.75f, 0f),
+                $"{i + 1}. {room.roomName} ({rect.width:F0}x{rect.height:F0})");
+        }
+    }
+
+    private void DrawCameraRoomCursor(TileMapData map, Vector2Int gridPos)
+    {
+        Rect cursorRect = GetGridRect(map, gridPos, gridPos);
+
+        Handles.DrawSolidRectangleWithOutline(
+            cursorRect,
+            new Color(0.1f, 0.8f, 1f, 0.12f),
+            new Color(0.1f, 0.9f, 1f, 0.95f));
+
+        if (!_hasCameraRoomStart)
+            return;
+
+        Rect preview = GetGridRect(map, _cameraRoomStartGrid, gridPos);
+
+        Handles.DrawSolidRectangleWithOutline(
+            preview,
+            new Color(0.1f, 0.9f, 1f, 0.18f),
+            new Color(1f, 0.9f, 0.1f, 0.95f));
+
+        Vector3 startWorld = new Vector3(preview.xMin, preview.yMin, 0f);
+        Handles.color = Color.yellow;
+        Handles.DrawWireDisc(map.transform.position + new Vector3(_cameraRoomStartGrid.x, _cameraRoomStartGrid.y, 0f), Vector3.forward, 0.18f);
+        Handles.Label(startWorld + Vector3.up * 0.25f, "Start");
+        Handles.Label(new Vector3(preview.xMax, preview.yMax, 0f) + Vector3.up * 0.25f, "RMB to Create");
+    }
+
+    private Rect GetGridRect(TileMapData map, Vector2Int a, Vector2Int b)
+    {
+        Vector2Int min = Vector2Int.Min(a, b);
+        Vector2Int max = Vector2Int.Max(a, b);
+        Vector3 origin = map.transform.position;
+
+        return new Rect(
+            origin.x + min.x,
+            origin.y + min.y,
+            max.x - min.x + 1f,
+            max.y - min.y + 1f);
     }
 
     private void HandleMovingPlatformInput(TileMapData map, Event e, Vector2Int gridPos)

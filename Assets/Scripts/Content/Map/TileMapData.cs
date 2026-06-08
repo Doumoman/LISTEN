@@ -11,9 +11,18 @@ public class TileData
     public Vector2 colliderSize = Vector2.one;
 }
 
+[System.Serializable]
+public class CameraRoomData
+{
+    public string roomName;
+    public Vector2Int startGridPos;
+    public Vector2Int endGridPos;
+}
+
 public class TileMapData : MonoBehaviour
 {
     [SerializeField] private List<TileData> _tiles = new List<TileData>();
+    [SerializeField] private List<CameraRoomData> _cameraRooms = new List<CameraRoomData>();
 
     private const string WaterFluidPrefabPath = "Prefabs/Map/Fluid/WaterFluid";
     private const string LavaFluidPrefabPath = "Prefabs/Map/Fluid/LavaFluid";
@@ -49,6 +58,7 @@ public class TileMapData : MonoBehaviour
     };
 
     public IReadOnlyList<TileData> Tiles => _tiles;
+    public IReadOnlyList<CameraRoomData> CameraRooms => _cameraRooms;
 
     public bool HasTile(Vector2Int pos) => _tiles.Exists(t => t.gridPos == pos);
 
@@ -84,6 +94,76 @@ public class TileMapData : MonoBehaviour
     }
 
     public void ClearAll() => _tiles.Clear();
+
+    public void AddCameraRoom(Vector2Int startGridPos, Vector2Int endGridPos)
+    {
+        Vector2Int min = Vector2Int.Min(startGridPos, endGridPos);
+        Vector2Int max = Vector2Int.Max(startGridPos, endGridPos);
+
+        _cameraRooms.Add(new CameraRoomData
+        {
+            roomName = $"Room {_cameraRooms.Count + 1}",
+            startGridPos = min,
+            endGridPos = max
+        });
+    }
+
+    public bool RemoveCameraRoomAt(Vector2Int gridPos)
+    {
+        int idx = _cameraRooms.FindIndex(room => ContainsGrid(room, gridPos));
+        if (idx < 0) return false;
+
+        _cameraRooms.RemoveAt(idx);
+        return true;
+    }
+
+    public void ClearCameraRooms() => _cameraRooms.Clear();
+
+    public Rect GetCameraRoomWorldRect(CameraRoomData room)
+    {
+        Vector2Int min = Vector2Int.Min(room.startGridPos, room.endGridPos);
+        Vector2Int max = Vector2Int.Max(room.startGridPos, room.endGridPos);
+        Vector3 origin = transform.position;
+
+        float xMin = origin.x + min.x;
+        float yMin = origin.y + min.y;
+        float width = max.x - min.x + 1f;
+        float height = max.y - min.y + 1f;
+
+        return new Rect(xMin, yMin, width, height);
+    }
+
+    public bool TryGetCameraRoom(Vector3 worldPos, out CameraRoomData room, out Rect worldRect)
+    {
+        Vector2Int gridPos = WorldToGrid(worldPos);
+
+        for (int i = 0; i < _cameraRooms.Count; i++)
+        {
+            CameraRoomData candidate = _cameraRooms[i];
+
+            if (!ContainsGrid(candidate, gridPos))
+                continue;
+
+            room = candidate;
+            worldRect = GetCameraRoomWorldRect(candidate);
+            return true;
+        }
+
+        room = null;
+        worldRect = default;
+        return false;
+    }
+
+    private bool ContainsGrid(CameraRoomData room, Vector2Int gridPos)
+    {
+        Vector2Int min = Vector2Int.Min(room.startGridPos, room.endGridPos);
+        Vector2Int max = Vector2Int.Max(room.startGridPos, room.endGridPos);
+
+        return gridPos.x >= min.x
+            && gridPos.x <= max.x
+            && gridPos.y >= min.y
+            && gridPos.y <= max.y;
+    }
 
     public Vector3 GridToWorld(Vector2Int gridPos)
         => transform.position + new Vector3(gridPos.x + 0.5f, gridPos.y + 0.5f, 0f);
@@ -536,6 +616,19 @@ public class TileMapData : MonoBehaviour
 
             Gizmos.color = c;
             Gizmos.DrawWireCube(center, new Vector3(sz.x, sz.y, 0.01f));
+        }
+
+        foreach (var room in _cameraRooms)
+        {
+            Rect rect = GetCameraRoomWorldRect(room);
+            Vector3 center = new Vector3(rect.center.x, rect.center.y, 0f);
+            Vector3 size = new Vector3(rect.width, rect.height, 0.01f);
+
+            Gizmos.color = new Color(0.2f, 0.75f, 1f, 0.12f);
+            Gizmos.DrawCube(center, size);
+
+            Gizmos.color = new Color(0.2f, 0.75f, 1f, 0.9f);
+            Gizmos.DrawWireCube(center, size);
         }
     }
 }

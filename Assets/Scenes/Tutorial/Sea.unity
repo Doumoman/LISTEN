@@ -2372,6 +2372,16 @@ MonoBehaviour:
   - gridPos: {x: 7, y: 1}
     type: 7
     colliderSize: {x: 1, y: 1}
+  _cameraRooms:
+  - roomName: Room 1
+    startGridPos: {x: -5, y: -4}
+    endGridPos: {x: 22, y: 8}
+  - roomName: Room 2
+    startGridPos: {x: 23, y: -4}
+    endGridPos: {x: 43, y: 8}
+  - roomName: Room 3
+    startGridPos: {x: 44, y: -4}
+    endGridPos: {x: 67, y: 8}
 --- !u!1 &279715823
 GameObject:
   m_ObjectHideFlags: 0
@@ -17089,9 +17099,9 @@ Camera:
     height: 1
   near clip plane: 0.3
   far clip plane: 932.21
-  field of view: 34
+  field of view: 25.360765
   orthographic: 0
-  orthographic size: 5
+  orthographic size: 4.5
   m_Depth: 0
   m_CullingMask:
     serializedVersion: 2
@@ -17116,7 +17126,7 @@ Transform:
   m_GameObject: {fileID: 2003206042}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 4.3, z: -21.5}
+  m_LocalPosition: {x: 3, y: 0.5, z: -20}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -17148,6 +17158,41 @@ MonoBehaviour:
   _maxX: 100
   _minY: -100
   _maxY: 100
+  _useCameraRooms: 1
+  _cameraRoomSource: {fileID: 266060757}
+  _roomTransitionDuration: 0.35
+  _freezeTimeDuringRoomTransition: 1
+  _roomTransitionCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  _useFixedVisibleArea: 1
+  _referenceResolution: {x: 2560, y: 1440}
+  _visibleAreaWorldHeight: 9
+  _forceReferenceAspect: 1
+  _shrinkVisibleAreaWhenRoomIsSmaller: 1
+  _usePlayerPlaneForPerspectiveBounds: 1
+  _perspectiveBoundsPlaneZ: 0
 --- !u!1 &2009513186
 GameObject:
   m_ObjectHideFlags: 0
