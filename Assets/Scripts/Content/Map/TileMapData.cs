@@ -1,7 +1,8 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
 
-public enum TileType { Ground, Ladder, Pushable, Door, LockedBlock, Water, Lava, MovingPlatform, FallingPlatform }
+// 주의: enum 순서는 직렬화 정수값이므로 새 타입은 항상 끝에 추가한다.
+public enum TileType { Ground, Ladder, Pushable, Door, LockedBlock, Water, Lava, MovingPlatform, FallingPlatform, Spike, Gas, Disguised, Fruit, Portal }
 
 [System.Serializable]
 public class TileData
@@ -9,6 +10,9 @@ public class TileData
     public Vector2Int gridPos;
     public TileType type;
     public Vector2 colliderSize = Vector2.one;
+
+    // Disguised 전용: 0 = Solid(안전), 1 = Deadly(치명), 2 = Fake(허상)
+    public int variant;
 }
 
 [System.Serializable]
@@ -17,6 +21,10 @@ public class CameraRoomData
     public string roomName;
     public Vector2Int startGridPos;
     public Vector2Int endGridPos;
+
+    // 룸 단위 리스폰 지점(셀레스트식 체크포인트). hasSpawn 이 true 일 때만 사용.
+    public bool hasSpawn;
+    public Vector2Int spawnGridPos;
 }
 
 public class TileMapData : MonoBehaviour
@@ -42,6 +50,12 @@ public class TileMapData : MonoBehaviour
         { TileType.Lava,           new Color(1f, 0.25f, 0f, 0.9f) },
         { TileType.MovingPlatform, new Color(1f, 0.85f, 0.15f, 0.9f) },
         { TileType.FallingPlatform, new Color(0.75f, 0.45f, 0.2f, 0.9f) },
+        { TileType.Spike,          new Color(0.95f, 0.2f, 0.2f, 0.9f) },
+        { TileType.Gas,            new Color(0.55f, 0.85f, 0.2f, 0.55f) },
+        // Disguised 는 일부러 Ground 와 동일한 흰색 — 겉모습으로 정체를 알 수 없게.
+        { TileType.Disguised,      Color.white },
+        { TileType.Fruit,          new Color(0.4f, 0.9f, 0.5f, 0.95f) },
+        { TileType.Portal,         new Color(0.4f, 0.8f, 1f, 0.95f) },
     };
 
     public static readonly Dictionary<TileType, string> LayerNames = new Dictionary<TileType, string>
@@ -55,6 +69,11 @@ public class TileMapData : MonoBehaviour
         { TileType.Lava,           "Lava" },
         { TileType.MovingPlatform, "Ground" },
         { TileType.FallingPlatform, "Ground" },
+        { TileType.Spike,          "Default" }, // 트리거(킬존)라 충돌 레이어와 무관
+        { TileType.Gas,            "Default" },
+        { TileType.Disguised,      "Ground" },  // Solid/Deadly 는 밟을 수 있어야 함
+        { TileType.Fruit,          "Default" },
+        { TileType.Portal,         "Default" },
     };
 
     public IReadOnlyList<TileData> Tiles => _tiles;
@@ -602,6 +621,336 @@ public class TileMapData : MonoBehaviour
     }
     #endregion
 
+
+    #region 절차적 일괄 빌드 (씬 빌더 / 런타임 공용)
+
+    private const string SquareSpritePath = "Sprites/Square";
+    private static Sprite _squareSprite;
+
+    private static readonly string[] StandardParents =
+    {
+        "Ground", "Ladder", "Pushable", "Door", "LockedBlock", "Water", "Lava",
+        "Spikes", "GasZones", "Disguised", "Fruits", "Portals"
+    };
+
+    /// <summary>
+    /// 타일 데이터를 기반으로 콜라이더 + 가시 스프라이트 + 기믹 컴포넌트를 모두 생성한다.
+    /// 새 데모 씬을 코드로 구성할 때 사용. 멱등(여러 번 호출해도 안전).
+    /// </summary>
+    public void RebuildAll()
+    {
+        ClearBuiltChildren();
+
+        foreach (TileData tile in _tiles)
+        {
+            switch (tile.type)
+            {
+                case TileType.MovingPlatform:
+                case TileType.FallingPlatform:
+                    break; // 아래 플랫폼 단계에서 처리
+                case TileType.Spike:
+                    BuildSpike(tile);
+                    break;
+                case TileType.Gas:
+                    BuildGas(tile);
+                    break;
+                case TileType.Disguised:
+                    BuildDisguised(tile);
+                    break;
+                case TileType.Fruit:
+                    BuildFruit(tile);
+                    break;
+                case TileType.Portal:
+                    BuildPortal(tile);
+                    break;
+                default:
+                    BuildStandardTile(tile);
+                    break;
+            }
+        }
+
+        RebuildFluids();
+
+        foreach (TileData tile in _tiles)
+        {
+            if (tile.type == TileType.MovingPlatform)
+                CreateMovingPlatform(tile.gridPos, tile.colliderSize);
+            else if (tile.type == TileType.FallingPlatform)
+                CreateFallingPlatform(tile.gridPos, tile.colliderSize);
+        }
+    }
+
+    private void ClearBuiltChildren()
+    {
+        foreach (string parentName in StandardParents)
+            DestroyChildByName(parentName);
+
+        DestroyChildByName("Fluids");
+        DestroyChildByName("DynamicFluids");
+        DestroyChildByName("MovingPlatforms");
+        DestroyChildByName("FallingPlatforms");
+    }
+
+    private void DestroyChildByName(string childName)
+    {
+        Transform found = transform.Find(childName);
+        if (found == null) return;
+
+#if UNITY_EDITOR
+        if (!Application.isPlaying)
+            DestroyImmediate(found.gameObject);
+        else
+            Destroy(found.gameObject);
+#else
+        Destroy(found.gameObject);
+#endif
+    }
+
+    private void BuildStandardTile(TileData tile)
+    {
+        string layerName = LayerNames[tile.type];
+        bool isGround = tile.type == TileType.Ground;
+        bool isTrigger = tile.type == TileType.Water || tile.type == TileType.Lava || tile.type == TileType.Ladder;
+
+        Transform parent = GetOrCreateBuildParent(tile.type.ToString(), layerName, isGround);
+
+        GameObject go = CreateTileObject(parent, tile, layerName);
+        BoxCollider2D box = go.AddComponent<BoxCollider2D>();
+        box.size = tile.colliderSize;
+        box.offset = Vector2.zero;
+        box.isTrigger = isTrigger;
+
+        if (isGround)
+            box.compositeOperation = Collider2D.CompositeOperation.Merge;
+
+        // 사다리/유체 트리거는 부모 이름 기반 감지(PlayerFSM.IsNamedFluid)와 호환되도록 이름 유지
+        AddTileVisual(go, tile.colliderSize, Colors[tile.type], 5);
+    }
+
+    private void BuildSpike(TileData tile)
+    {
+        Transform parent = GetOrCreateBuildParent("Spikes", "Default", false);
+        GameObject go = CreateTileObject(parent, tile, "Default");
+
+        BoxCollider2D box = go.AddComponent<BoxCollider2D>();
+        box.size = tile.colliderSize;
+        box.offset = Vector2.zero;
+        box.isTrigger = true;
+
+        go.AddComponent<KillZone>();
+        AddTileVisual(go, tile.colliderSize, Colors[TileType.Spike], 6);
+    }
+
+    private void BuildGas(TileData tile)
+    {
+        Transform parent = GetOrCreateBuildParent("GasZones", "Default", false);
+        GameObject go = CreateTileObject(parent, tile, "Default");
+
+        BoxCollider2D box = go.AddComponent<BoxCollider2D>();
+        box.size = tile.colliderSize;
+        box.offset = Vector2.zero;
+        box.isTrigger = true;
+
+        GasZone gas = go.AddComponent<GasZone>();
+        if (tile.variant == 1) // Pulsing
+            gas.Configure(0.8f, true, 1.4f, 1.2f, 0f);
+
+        AddTileVisual(go, tile.colliderSize, Colors[TileType.Gas], 7);
+    }
+
+    // variant: 0 = Solid, 1 = Deadly, 2 = Fake
+    private void BuildDisguised(TileData tile)
+    {
+        bool solidLike = tile.variant != 2; // Fake 만 비-솔리드
+        string layerName = solidLike ? "Ground" : "Default";
+
+        Transform parent = GetOrCreateBuildParent("Disguised", null, false);
+        GameObject go = CreateTileObject(parent, tile, layerName);
+
+        if (tile.variant == 0) // Solid
+        {
+            BoxCollider2D solid = go.AddComponent<BoxCollider2D>();
+            solid.size = tile.colliderSize;
+            solid.offset = Vector2.zero;
+        }
+        else if (tile.variant == 1) // Deadly: 솔리드(밟힘) + 약간 큰 트리거(접촉 사망)
+        {
+            BoxCollider2D solid = go.AddComponent<BoxCollider2D>();
+            solid.size = tile.colliderSize;
+            solid.offset = Vector2.zero;
+
+            BoxCollider2D trigger = go.AddComponent<BoxCollider2D>();
+            trigger.size = tile.colliderSize + new Vector2(0.2f, 0.2f);
+            trigger.offset = Vector2.zero;
+            trigger.isTrigger = true;
+        }
+        else // Fake: 트리거만(통과+추락), DisguisedBlock 이 페이드 처리
+        {
+            BoxCollider2D trigger = go.AddComponent<BoxCollider2D>();
+            trigger.size = tile.colliderSize;
+            trigger.offset = Vector2.zero;
+            trigger.isTrigger = true;
+        }
+
+        DisguisedBlock disguised = go.AddComponent<DisguisedBlock>();
+        disguised.SetKind((DisguiseKind)tile.variant);
+
+        // Disguised 는 의도적으로 Ground 와 동일한 흰색.
+        AddTileVisual(go, tile.colliderSize, Color.white, 5);
+    }
+
+    // 미각 — 열매. variant = TasteKind (0 None,1 Antidote,2 Vision,3 Phase,4 Heat)
+    private void BuildFruit(TileData tile)
+    {
+        Transform parent = GetOrCreateBuildParent("Fruits", "Default", false);
+        GameObject go = CreateTileObject(parent, tile, "Default");
+
+        CircleCollider2D col = go.AddComponent<CircleCollider2D>();
+        col.radius = 0.55f;
+        col.isTrigger = true;
+
+        TasteKind kind = (TasteKind)Mathf.Clamp(tile.variant, 0, 4);
+        Fruit fruit = go.AddComponent<Fruit>();
+        fruit.Configure(kind, FruitDuration(kind), true); // 데모: 재섭취 가능
+
+        AddTileVisual(go, Vector2.one * 0.7f, FruitColor(kind), 12);
+    }
+
+    // 청각/이동 — 포탈. variant: 0 = Decoy(가짜), 1 = Real(진짜, 다음 룸으로 워프 + 소리 비콘)
+    private void BuildPortal(TileData tile)
+    {
+        bool isReal = tile.variant == 1;
+
+        Transform parent = GetOrCreateBuildParent("Portals", "Default", false);
+        GameObject go = CreateTileObject(parent, tile, "Default");
+
+        CircleCollider2D col = go.AddComponent<CircleCollider2D>();
+        col.radius = 0.7f;
+        col.isTrigger = true;
+
+        Transform target = null;
+        if (isReal)
+        {
+            GameObject t = new GameObject("Target");
+            t.transform.SetParent(go.transform, false);
+            t.transform.position = GetNextRoomSpawnWorld(tile.gridPos);
+            target = t.transform;
+
+            AudioSource src = go.AddComponent<AudioSource>();
+            src.playOnAwake = false;
+            go.AddComponent<SoundBeacon>();
+        }
+
+        Portal portal = go.AddComponent<Portal>();
+        portal.Configure(isReal, target, false);
+
+        AddTileVisual(go, Vector2.one * 1.1f,
+            isReal ? Colors[TileType.Portal] : new Color(0.5f, 0.5f, 0.6f, 0.9f), 9);
+    }
+
+    // 포탈이 속한 룸의 '다음 룸' 스폰을 목표로(없으면 첫 룸으로 루프).
+    private Vector3 GetNextRoomSpawnWorld(Vector2Int gridPos)
+    {
+        if (_cameraRooms.Count == 0)
+            return GridToWorld(gridPos) + Vector3.right * 3f;
+
+        int idx = _cameraRooms.FindIndex(r => ContainsGrid(r, gridPos));
+        int nextIdx = idx < 0 ? 0 : (idx + 1) % _cameraRooms.Count;
+        CameraRoomData next = _cameraRooms[nextIdx];
+
+        return next.hasSpawn ? GridToWorld(next.spawnGridPos) : GridToWorld(gridPos);
+    }
+
+    private static float FruitDuration(TasteKind kind)
+    {
+        switch (kind)
+        {
+            case TasteKind.Vision: return 14f;
+            case TasteKind.Antidote: return 9f;
+            default: return 10f;
+        }
+    }
+
+    private static Color FruitColor(TasteKind kind)
+    {
+        switch (kind)
+        {
+            case TasteKind.Antidote: return new Color(0.4f, 0.9f, 0.5f);
+            case TasteKind.Vision: return new Color(1f, 0.95f, 0.4f);
+            case TasteKind.Phase: return new Color(0.7f, 0.5f, 1f);
+            case TasteKind.Heat: return new Color(1f, 0.55f, 0.25f);
+            default: return Color.white;
+        }
+    }
+
+    private GameObject CreateTileObject(Transform parent, TileData tile, string layerName)
+    {
+        GameObject go = new GameObject(ColliderObjectName(tile.gridPos));
+        go.transform.SetParent(parent, false);
+        go.transform.position = GridToWorld(tile.gridPos);
+
+        if (!string.IsNullOrEmpty(layerName))
+        {
+            int layer = LayerMask.NameToLayer(layerName);
+            if (layer >= 0) go.layer = layer;
+        }
+
+        return go;
+    }
+
+    private SpriteRenderer AddTileVisual(GameObject parentGo, Vector2 size, Color color, int sortingOrder)
+    {
+        Sprite sprite = GetSquareSprite();
+        if (sprite == null) return null;
+
+        GameObject visualGo = new GameObject("Visual");
+        visualGo.transform.SetParent(parentGo.transform, false);
+        visualGo.transform.localPosition = Vector3.zero;
+        visualGo.transform.localScale = new Vector3(size.x, size.y, 1f);
+
+        SpriteRenderer sr = visualGo.AddComponent<SpriteRenderer>();
+        sr.sprite = sprite;
+        sr.color = color;
+        sr.sortingOrder = sortingOrder;
+
+        return sr;
+    }
+
+    private Transform GetOrCreateBuildParent(string parentName, string layerName, bool ground)
+    {
+        Transform existing = transform.Find(parentName);
+        if (existing != null) return existing;
+
+        GameObject parentGo = new GameObject(parentName);
+        parentGo.transform.SetParent(transform, false);
+
+        if (!string.IsNullOrEmpty(layerName))
+        {
+            int layer = LayerMask.NameToLayer(layerName);
+            if (layer >= 0) parentGo.layer = layer;
+        }
+
+        if (ground)
+        {
+            Rigidbody2D rb = parentGo.AddComponent<Rigidbody2D>();
+            rb.bodyType = RigidbodyType2D.Static;
+            parentGo.AddComponent<CompositeCollider2D>();
+        }
+
+        return parentGo.transform;
+    }
+
+    private static Sprite GetSquareSprite()
+    {
+        if (_squareSprite == null)
+            _squareSprite = Resources.Load<Sprite>(SquareSpritePath);
+
+        return _squareSprite;
+    }
+
+    private static string ColliderObjectName(Vector2Int pos) => $"Tile_{pos.x}_{pos.y}";
+
+    #endregion
 
     private void OnDrawGizmos()
     {

@@ -29,8 +29,23 @@ public class TileMapEditor : Editor
         "Water",
         "Lava",
         "MovingPlatform",
-        "FallingPlatform"
+        "FallingPlatform",
+        "Spike",
+        "Gas",
+        "Disguised",
+        "Fruit",
+        "Portal"
     };
+
+    private int _variant;
+
+    private static readonly string[] DisguisedVariants = { "Solid(안전)", "Deadly(치명)", "Fake(허상)" };
+    private static readonly string[] FruitVariants = { "None", "Antidote(해독)", "Vision(광명)", "Phase(위상)", "Heat(작열)" };
+    private static readonly string[] PortalVariants = { "Decoy(가짜)", "Real(진짜)" };
+    private static readonly string[] GasVariants = { "Static(상시)", "Pulsing(맥동)" };
+
+    private static bool UsesVariant(TileType t)
+        => t == TileType.Disguised || t == TileType.Fruit || t == TileType.Portal || t == TileType.Gas;
 
     public override void OnInspectorGUI()
     {
@@ -92,6 +107,20 @@ public class TileMapEditor : Editor
         _colliderSize.x = Mathf.Max(0.1f, _colliderSize.x);
         _colliderSize.y = Mathf.Max(0.1f, _colliderSize.y);
 
+        if (UsesVariant(_selected))
+        {
+            EditorGUILayout.Space(4);
+            EditorGUILayout.LabelField("Variant (종류)", EditorStyles.boldLabel);
+
+            string[] opts = _selected == TileType.Disguised ? DisguisedVariants
+                          : _selected == TileType.Fruit ? FruitVariants
+                          : _selected == TileType.Gas ? GasVariants
+                          : PortalVariants;
+
+            _variant = Mathf.Clamp(_variant, 0, opts.Length - 1);
+            _variant = EditorGUILayout.Popup(_variant, opts);
+        }
+
         EditorGUILayout.Space(4);
 
         if (_selected == TileType.MovingPlatform)
@@ -117,6 +146,19 @@ public class TileMapEditor : Editor
         }
 
         EditorGUILayout.Space(4);
+
+        Color prevBg = GUI.backgroundColor;
+        GUI.backgroundColor = new Color(0.45f, 0.85f, 1f);
+        if (GUILayout.Button("★ Rebuild All (콜라이더 + 기믹 일괄)", GUILayout.Height(28)))
+            map.RebuildAll();
+        GUI.backgroundColor = prevBg;
+
+        EditorGUILayout.HelpBox(
+            "Spike / Gas / Disguised / Fruit / Portal 같은 기믹은 페인트 후\n" +
+            "위의 ★ Rebuild All 을 눌러야 실제 오브젝트로 생성됩니다.",
+            MessageType.None);
+
+        EditorGUILayout.Space(2);
 
         if (GUILayout.Button("Rebuild Colliders"))
             RebuildColliders(map);
@@ -463,6 +505,13 @@ public class TileMapEditor : Editor
                     RemoveCollider(map, gridPos);
 
                 map.AddOrReplace(gridPos, _selected, _colliderSize);
+
+                if (UsesVariant(_selected))
+                {
+                    TileData painted = map.GetTile(gridPos);
+                    if (painted != null) painted.variant = _variant;
+                }
+
                 UpdateCollider(map, gridPos, _selected, _colliderSize);
             }
 
@@ -572,6 +621,12 @@ public class TileMapEditor : Editor
     private void UpdateCollider(TileMapData map, Vector2Int pos, TileType type, Vector2 colliderSize)
     {
         RemoveCollider(map, pos);
+
+        // 감각 기믹(Spike/Gas/Disguised/Fruit/Portal)은 데이터만 저장하고
+        // 실제 오브젝트는 ★ Rebuild All(map.RebuildAll)에서 일괄 생성한다.
+        if (type == TileType.Spike || type == TileType.Gas || type == TileType.Disguised
+            || type == TileType.Fruit || type == TileType.Portal)
+            return;
 
         if (type == TileType.MovingPlatform)
         {

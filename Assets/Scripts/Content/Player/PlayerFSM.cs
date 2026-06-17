@@ -235,6 +235,60 @@ public class PlayerFSM : MonoBehaviour
         _currentState?.Enter();
     }
 
+    // ── 사망 / 리스폰 / 텔레포트 ──
+    public bool IsDead => _playerData.isDead;
+
+    /// <summary>플레이어를 사망 처리한다. 실제 부활은 RoomRespawnController가 담당.</summary>
+    public void Kill()
+    {
+        if (_playerData.isDead) return;
+
+        _playerData.isDead = true;
+        SetMoveVelocity(Vector2.zero);
+        SetExternalVelocity(Vector2.zero);
+    }
+
+    /// <summary>지정 위치에서 깨끗한 상태로 부활시킨다(사망 해제 + 상태 초기화).</summary>
+    public void Respawn(Vector3 worldPos)
+    {
+        if (_heldObject != null)
+        {
+            _heldObject = null;
+            _playerData.isHolding = false;
+        }
+
+        ResetMotion(worldPos);
+
+        _playerData.isDead = false;
+        _playerData.isHanging = false;
+        _playerData.isLedgeGrabbed = false;
+        lastDir = Vector2.right;
+
+        TransitionTo(MoveState);
+    }
+
+    /// <summary>살아있는 채로 위치만 순간이동(포탈 등). 속도/관성만 초기화.</summary>
+    public void Teleport(Vector3 worldPos)
+    {
+        ResetMotion(worldPos);
+    }
+
+    private void ResetMotion(Vector3 worldPos)
+    {
+        transform.position = worldPos;
+
+        SetMoveVelocity(Vector2.zero);
+        SetExternalVelocity(Vector2.zero);
+        _liftVelocity = Vector2.zero;
+        _liftVelocityTimer = 0f;
+        _currentPlatform = null;
+
+        _fluidContacts.Clear();
+        _playerData.isInFluid = false;
+        _playerData.isInWater = false;
+        _playerData.isInLava = false;
+    }
+
     // ㅡㅡ 스프라이트 좌우 반전을 위한 함수 ㅡㅡ
     public int GetDirectionIndex()
     {

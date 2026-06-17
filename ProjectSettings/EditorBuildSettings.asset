@@ -11,6 +11,21 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/Tutorial/Sea.unity
     guid: 59347e11042624a40abe72e808e6d042
+  - enabled: 1
+    path: Assets/Scenes/TileMapTest/1_Touch_Sight.unity
+    guid: 24d4d5c265a03034b8a7bc05f6f3d664
+  - enabled: 1
+    path: Assets/Scenes/TileMapTest/2_Smell_Taste.unity
+    guid: 4d08dca39efa7e04b914c4e747e7cb37
+  - enabled: 1
+    path: Assets/Scenes/TileMapTest/3_Hearing_Sight.unity
+    guid: 98da7a4919c93714d96601d92f5bfb75
+  - enabled: 1
+    path: Assets/Scenes/TileMapTest/4_Touch_Smell_Taste.unity
+    guid: fa71c2bd77ce54e40b659b2931065089
+  - enabled: 1
+    path: Assets/Scenes/TileMapTest/5_All_Senses.unity
+    guid: d5b1f5d632180ac41879b912fd2a3f02
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 22a171633c818624ea64273545116c5d, type: 3}
   m_UseUCBPForAssetBundles: 0
