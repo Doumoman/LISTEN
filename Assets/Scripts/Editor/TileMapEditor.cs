@@ -717,6 +717,10 @@ public class TileMapEditor : Editor
             if (tile.type == TileType.MovingPlatform || tile.type == TileType.FallingPlatform)
                 continue;
 
+            // Ladder는 BuildMergedLadders() 에서 연결 그룹 단위로 일괄 처리
+            if (tile.type == TileType.Ladder)
+                continue;
+
             Transform layerParent = map.transform.Find(tile.type.ToString());
 
             GameObject go = new GameObject(ColliderName(tile.gridPos));
@@ -727,7 +731,7 @@ public class TileMapEditor : Editor
             box.offset = new Vector2(0.5f, 0.5f);
             box.size = tile.colliderSize;
 
-            if (tile.type == TileType.Water || tile.type == TileType.Lava || tile.type == TileType.Ladder)
+            if (tile.type == TileType.Water || tile.type == TileType.Lava)
             {
                 box.isTrigger = true;
             }
@@ -741,6 +745,8 @@ public class TileMapEditor : Editor
             if (layer >= 0)
                 go.layer = layer;
         }
+
+        map.BuildMergedLadders();
 
         EditorUtility.SetDirty(map);
     }

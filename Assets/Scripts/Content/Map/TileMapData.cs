@@ -622,6 +622,123 @@ public class TileMapData : MonoBehaviour
     #endregion
 
 
+    #region Ladder 병합 빌드
+
+    /// <summary>
+    /// 4방향 인접한 Ladder 타일들을 연결 컴포넌트(BFS)로 묶어 반환한다.
+    /// </summary>
+    private List<List<TileData>> GetLadderConnectedGroups()
+    {
+        List<TileData> ladderTiles = _tiles.FindAll(t => t.type == TileType.Ladder);
+
+        Dictionary<Vector2Int, TileData> ladderMap = new Dictionary<Vector2Int, TileData>();
+        foreach (TileData tile in ladderTiles)
+            ladderMap[tile.gridPos] = tile;
+
+        HashSet<Vector2Int> visited = new HashSet<Vector2Int>();
+        List<List<TileData>> groups = new List<List<TileData>>();
+        Vector2Int[] dirs = { Vector2Int.up, Vector2Int.down, Vector2Int.left, Vector2Int.right };
+
+        foreach (TileData tile in ladderTiles)
+        {
+            if (visited.Contains(tile.gridPos)) continue;
+
+            List<TileData> group = new List<TileData>();
+            Queue<Vector2Int> queue = new Queue<Vector2Int>();
+            queue.Enqueue(tile.gridPos);
+            visited.Add(tile.gridPos);
+
+            while (queue.Count > 0)
+            {
+                Vector2Int cur = queue.Dequeue();
+                group.Add(ladderMap[cur]);
+
+                foreach (Vector2Int d in dirs)
+                {
+                    Vector2Int nb = cur + d;
+                    if (!visited.Contains(nb) && ladderMap.ContainsKey(nb))
+                    {
+                        visited.Add(nb);
+                        queue.Enqueue(nb);
+                    }
+                }
+            }
+
+            groups.Add(group);
+        }
+
+        return groups;
+    }
+
+    /// <summary>
+    /// 연결된 Ladder 타일 그룹마다 하나의 GameObject를 생성한다.
+    /// 콜라이더는 그룹의 바운딩 박스 크기의 단일 BoxCollider2D(isTrigger).
+    /// RebuildAll / RebuildColliders(TileMapEditor) 양쪽에서 호출된다.
+    /// </summary>
+    public void BuildMergedLadders()
+    {
+        List<List<TileData>> groups = GetLadderConnectedGroups();
+        if (groups.Count == 0) return;
+
+        string layerName = LayerNames[TileType.Ladder];
+        int layer = LayerMask.NameToLayer(layerName);
+        Transform parent = GetOrCreateBuildParent("Ladder", layerName, false);
+
+        foreach (List<TileData> group in groups)
+        {
+            int minX = int.MaxValue, minY = int.MaxValue;
+            int maxX = int.MinValue, maxY = int.MinValue;
+
+            foreach (TileData t in group)
+            {
+                if (t.gridPos.x < minX) minX = t.gridPos.x;
+                if (t.gridPos.y < minY) minY = t.gridPos.y;
+                if (t.gridPos.x > maxX) maxX = t.gridPos.x;
+                if (t.gridPos.y > maxY) maxY = t.gridPos.y;
+            }
+
+            float w = maxX - minX + 1f;
+            float h = maxY - minY + 1f;
+
+            string goName = group.Count == 1
+                ? $"Tile_{group[0].gridPos.x}_{group[0].gridPos.y}"
+                : $"Ladder_{minX}_{minY}_to_{maxX}_{maxY}";
+
+            GameObject go = new GameObject(goName);
+            go.transform.SetParent(parent, false);
+            // GO 원점 = 그룹 바운딩 박스의 좌하단
+            go.transform.position = transform.position + new Vector3(minX, minY, 0f);
+
+            if (layer >= 0) go.layer = layer;
+
+            BoxCollider2D box = go.AddComponent<BoxCollider2D>();
+            box.isTrigger = true;
+            // 바운딩 박스 전체를 하나의 트리거로
+            box.offset = new Vector2(w * 0.5f, h * 0.5f);
+            box.size = new Vector2(w, h);
+
+            // 각 타일 위치에 개별 시각 스프라이트 추가
+            Sprite sq = GetSquareSprite();
+            if (sq != null)
+            {
+                Color c = Colors[TileType.Ladder];
+                foreach (TileData t in group)
+                {
+                    GameObject vis = new GameObject("Visual");
+                    vis.transform.SetParent(go.transform, false);
+                    vis.transform.position = GridToWorld(t.gridPos);
+                    vis.transform.localScale = new Vector3(t.colliderSize.x, t.colliderSize.y, 1f);
+                    SpriteRenderer sr = vis.AddComponent<SpriteRenderer>();
+                    sr.sprite = sq;
+                    sr.color = c;
+                    sr.sortingOrder = 5;
+                }
+            }
+        }
+    }
+
+    #endregion
+
     #region 절차적 일괄 빌드 (씬 빌더 / 런타임 공용)
 
     private const string SquareSpritePath = "Sprites/Square";
@@ -648,6 +765,8 @@ public class TileMapData : MonoBehaviour
                 case TileType.MovingPlatform:
                 case TileType.FallingPlatform:
                     break; // 아래 플랫폼 단계에서 처리
+                case TileType.Ladder:
+                    break; // BuildMergedLadders() 에서 일괄 처리
                 case TileType.Spike:
                     BuildSpike(tile);
                     break;
@@ -668,6 +787,8 @@ public class TileMapData : MonoBehaviour
                     break;
             }
         }
+
+        BuildMergedLadders();
 
         RebuildFluids();
 
