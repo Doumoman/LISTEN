@@ -108,7 +108,9 @@ public static class GroundContourBuilder
         }
         // (minX, topY[minX]) 도달 → 왼쪽 변을 타고 바닥으로 닫힘(Collapse 가 순환 처리)
 
-        return Collapse(pts);
+        List<Vector2> corners = Collapse(pts);
+        corners.Reverse(); // SpriteShape edge 가 바깥(위)을 향하도록 winding 반전
+        return corners;
     }
 
     // 직선으로 이어지는 점 제거(코너만 유지). 폐곡선으로 순환 처리.

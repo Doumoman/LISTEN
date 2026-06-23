@@ -37,11 +37,12 @@ public class GroundContourBuilderTests
         List<List<Vector2>> loops = GroundContourBuilder.BuildTopProfiles(cells, 2f);
 
         Assert.AreEqual(1, loops.Count);
+        // winding 반전: 위 → 아래 순서
         CollectionAssert.AreEqual(
             new[]
             {
-                new Vector2(0, -1), new Vector2(1, -1),
-                new Vector2(1, 1), new Vector2(0, 1)
+                new Vector2(0, 1), new Vector2(1, 1),
+                new Vector2(1, -1), new Vector2(0, -1)
             },
             loops[0]);
     }
@@ -57,16 +58,16 @@ public class GroundContourBuilderTests
         List<List<Vector2>> loops = GroundContourBuilder.BuildTopProfiles(cells, 2f);
 
         Assert.AreEqual(1, loops.Count);
-        // 표면 Y=1, 바닥 Y=-1 인 직사각형(코너 4개로 압축)
+        // 표면 Y=1, 바닥 Y=-1 인 직사각형(코너 4개로 압축, winding 반전)
         CollectionAssert.AreEqual(
             new[]
             {
-                new Vector2(0, -1), new Vector2(3, -1),
-                new Vector2(3, 1), new Vector2(0, 1)
+                new Vector2(0, 1), new Vector2(3, 1),
+                new Vector2(3, -1), new Vector2(0, -1)
             },
             loops[0]);
         // 윗변 양 끝 꼭짓점의 Y 가 동일(평평) — 경사 없음
-        Assert.AreEqual(loops[0][2].y, loops[0][3].y);
+        Assert.AreEqual(loops[0][0].y, loops[0][1].y);
     }
 
     [Test]
@@ -81,12 +82,13 @@ public class GroundContourBuilderTests
         List<List<Vector2>> loops = GroundContourBuilder.BuildTopProfiles(cells, 2f);
 
         Assert.AreEqual(1, loops.Count);
+        // winding 반전 순서
         CollectionAssert.AreEqual(
             new[]
             {
-                new Vector2(0, -1), new Vector2(2, -1),
-                new Vector2(2, 2), new Vector2(1, 2),
-                new Vector2(1, 1), new Vector2(0, 1)
+                new Vector2(0, 1), new Vector2(1, 1),
+                new Vector2(1, 2), new Vector2(2, 2),
+                new Vector2(2, -1), new Vector2(0, -1)
             },
             loops[0]);
     }
