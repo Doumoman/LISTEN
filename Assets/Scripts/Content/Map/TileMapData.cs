@@ -36,6 +36,7 @@ public class TileMapData : MonoBehaviour
     [Header("Ground SpriteShape")]
     [SerializeField] private SpriteShape _groundProfile;        // 2D Fantasy 번들의 지형 프로필 드래그
     [SerializeField] private Vector2 _groundShapeOffset = Vector2.zero; // 비주얼-콜라이더 정렬용 전역 오프셋
+    [SerializeField] private float _groundShapeDepth = 3f;      // 윗면 아래로 자동 생성할 흙 몸통 깊이
 
     private const string WaterFluidPrefabPath = "Prefabs/Map/Fluid/WaterFluid";
     private const string LavaFluidPrefabPath = "Prefabs/Map/Fluid/LavaFluid";
@@ -780,7 +781,7 @@ public class TileMapData : MonoBehaviour
         Transform parent = new GameObject("GroundShapes").transform;
         parent.SetParent(transform, false);
 
-        List<List<Vector2>> loops = GroundContourBuilder.BuildOuterLoops(groundCells);
+        List<List<Vector2>> loops = GroundContourBuilder.BuildTopProfiles(groundCells, _groundShapeDepth);
 
         for (int i = 0; i < loops.Count; i++)
             CreateGroundShape(parent, loops[i]);

@@ -2,8 +2,10 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Ground 타일(단위 격자 셀) 집합으로부터 경사 없는 닫힌 윤곽을 계산하는 순수 로직.
+/// Ground 타일(단위 격자 셀) 집합으로부터 경사 없는 SpriteShape 윤곽을 계산하는 순수 로직.
 /// 셀 gridPos 는 격자 모서리 좌표로 gridPos ~ gridPos+(1,1) 영역을 차지한다.
+/// 플레이어가 밟는 윗면만 칠하는 워크플로를 위해, 각 영역의 윗면 프로파일을 따고
+/// 그 아래로 depth 만큼 평평한 자동 바닥을 붙여 닫힌 흙 몸통을 만든다.
 /// </summary>
 public static class GroundContourBuilder
 {
@@ -51,69 +53,65 @@ public static class GroundContourBuilder
     }
 
     /// <summary>
-    /// 4-연결 그룹마다 외곽(CCW) 닫힌 윤곽 1개를 만든다.
-    /// 각 루프는 격자 모서리 좌표의 닫힌 CCW 다각형이며, 직선 점은 합쳐지고
-    /// 첫 점은 끝에서 중복되지 않는다. 내부 구멍(CW 루프)은 제외한다.
+    /// 4-연결 그룹마다 닫힌 윤곽 1개를 만든다.
+    /// 윗면은 각 열의 최상단 셀 표면을 따르는 계단형 프로파일,
+    /// 아래는 그룹 최저 표면에서 depth 만큼 내린 평평한 자동 바닥.
+    /// 각 루프는 격자 모서리 좌표(바닥 Y만 depth 반영)의 CCW 다각형이며 직선 점은 합쳐진다.
     /// </summary>
-    public static List<List<Vector2>> BuildOuterLoops(IReadOnlyCollection<Vector2Int> cells)
+    public static List<List<Vector2>> BuildTopProfiles(IReadOnlyCollection<Vector2Int> cells, float depth)
     {
         List<List<Vector2>> result = new List<List<Vector2>>();
 
         foreach (List<Vector2Int> group in GroupConnected(cells))
-        {
-            foreach (List<Vector2> loop in BuildLoops(group))
-            {
-                if (SignedArea(loop) > 0f) // 외곽 루프 = CCW = 양의 넓이
-                    result.Add(Collapse(loop));
-            }
-        }
+            result.Add(BuildTopProfile(group, depth));
 
         return result;
     }
 
-    // 그룹의 경계 에지를 모아 닫힌 루프(들)로 잇는다. 내부가 왼쪽에 오도록 방향 부여.
-    private static List<List<Vector2>> BuildLoops(List<Vector2Int> group)
+    private static List<Vector2> BuildTopProfile(List<Vector2Int> group, float depth)
     {
-        HashSet<Vector2Int> set = new HashSet<Vector2Int>(group);
-        Dictionary<Vector2, Vector2> next = new Dictionary<Vector2, Vector2>();
-
+        int minX = int.MaxValue, maxX = int.MinValue;
         foreach (Vector2Int c in group)
         {
-            Vector2 bl = new Vector2(c.x, c.y);
-            Vector2 br = new Vector2(c.x + 1, c.y);
-            Vector2 tr = new Vector2(c.x + 1, c.y + 1);
-            Vector2 tl = new Vector2(c.x, c.y + 1);
-
-            if (!set.Contains(c + Vector2Int.down))  next[bl] = br; // 아래변
-            if (!set.Contains(c + Vector2Int.right)) next[br] = tr; // 오른변
-            if (!set.Contains(c + Vector2Int.up))    next[tr] = tl; // 윗변
-            if (!set.Contains(c + Vector2Int.left))  next[tl] = bl; // 왼변
+            if (c.x < minX) minX = c.x;
+            if (c.x > maxX) maxX = c.x;
         }
 
-        List<List<Vector2>> loops = new List<List<Vector2>>();
-        HashSet<Vector2> used = new HashSet<Vector2>();
-
-        foreach (KeyValuePair<Vector2, Vector2> kv in next)
+        // 열(column)마다 최상단 셀의 윗면 Y (= 셀.y + 1)
+        Dictionary<int, int> topY = new Dictionary<int, int>();
+        foreach (Vector2Int c in group)
         {
-            if (used.Contains(kv.Key)) continue;
-
-            List<Vector2> loop = new List<Vector2>();
-            Vector2 cur = kv.Key;
-
-            while (!used.Contains(cur))
-            {
-                used.Add(cur);
-                loop.Add(cur);
-                cur = next[cur];
-            }
-
-            loops.Add(loop);
+            int t = c.y + 1;
+            if (!topY.TryGetValue(c.x, out int cur) || t > cur)
+                topY[c.x] = t;
         }
 
-        return loops;
+        int minTop = int.MaxValue;
+        for (int x = minX; x <= maxX; x++)
+            if (topY[x] < minTop) minTop = topY[x];
+
+        float bottomY = minTop - depth;
+
+        List<Vector2> pts = new List<Vector2>();
+
+        // 바닥 좌→우, 오른쪽 변을 타고 윗면 우측 끝까지
+        pts.Add(new Vector2(minX, bottomY));
+        pts.Add(new Vector2(maxX + 1, bottomY));
+        pts.Add(new Vector2(maxX + 1, topY[maxX]));
+
+        // 윗면 프로파일 우→좌 (계단)
+        for (int x = maxX; x >= minX; x--)
+        {
+            pts.Add(new Vector2(x, topY[x]));                 // 열 x 윗면의 좌측 끝
+            if (x > minX && topY[x - 1] != topY[x])
+                pts.Add(new Vector2(x, topY[x - 1]));         // 경계 x 의 수직 단차
+        }
+        // (minX, topY[minX]) 도달 → 왼쪽 변을 타고 바닥으로 닫힘(Collapse 가 순환 처리)
+
+        return Collapse(pts);
     }
 
-    // 직선으로 이어지는 점 제거(코너만 유지).
+    // 직선으로 이어지는 점 제거(코너만 유지). 폐곡선으로 순환 처리.
     private static List<Vector2> Collapse(List<Vector2> loop)
     {
         int n = loop.Count;
@@ -134,19 +132,5 @@ public static class GroundContourBuilder
         }
 
         return outPts;
-    }
-
-    // 신발끈 공식. CCW면 양수, CW(구멍)면 음수.
-    private static float SignedArea(List<Vector2> loop)
-    {
-        float a = 0f;
-        int n = loop.Count;
-        for (int i = 0; i < n; i++)
-        {
-            Vector2 p = loop[i];
-            Vector2 q = loop[(i + 1) % n];
-            a += p.x * q.y - q.x * p.y;
-        }
-        return a * 0.5f;
     }
 }

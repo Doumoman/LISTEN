@@ -169,6 +169,7 @@ public class TileMapEditor : Editor
         serializedObject.Update();
         EditorGUILayout.PropertyField(serializedObject.FindProperty("_groundProfile"), new GUIContent("Ground Profile"));
         EditorGUILayout.PropertyField(serializedObject.FindProperty("_groundShapeOffset"), new GUIContent("Ground Shape Offset"));
+        EditorGUILayout.PropertyField(serializedObject.FindProperty("_groundShapeDepth"), new GUIContent("Ground Shape Depth"));
         serializedObject.ApplyModifiedProperties();
 
         if (GUILayout.Button("Rebuild Ground SpriteShape"))
