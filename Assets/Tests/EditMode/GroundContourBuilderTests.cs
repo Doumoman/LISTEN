@@ -135,6 +135,19 @@ public class GroundContourBuilderTests
     }
 
     [Test]
+    public void BuildTopProfiles_InsetCollapsesNarrowColumn_ProducesDegenerateLoop()
+    {
+        // 폭 1 기둥에 inset 0.5 → 윗변 폭이 0 으로 붕괴.
+        // 근접 점이 병합되어 점 3개 미만 → 호출측(CreateGroundShape)이 건너뛴다.
+        var cells = new List<Vector2Int> { new Vector2Int(0, 0) };
+
+        List<List<Vector2>> loops = GroundContourBuilder.BuildTopProfiles(cells, 2f, 0.5f);
+
+        Assert.AreEqual(1, loops.Count);
+        Assert.Less(loops[0].Count, 3);
+    }
+
+    [Test]
     public void BuildTopProfiles_TwoDiagonalGroups_ProduceTwoLoops()
     {
         var cells = new List<Vector2Int> { new Vector2Int(0, 0), new Vector2Int(2, 2) };

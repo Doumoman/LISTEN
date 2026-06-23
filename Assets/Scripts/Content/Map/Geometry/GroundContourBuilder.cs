@@ -115,8 +115,37 @@ public static class GroundContourBuilder
         if (edgeInset != 0f)
             InsetVerticalEdges(corners, edgeInset);
 
+        // inset 으로 인해 좁은 구간이 collapse 되어 점이 거의 겹치면 SpriteShape 가
+        // "control points too close" 경고를 매 프레임 뱉으므로, 근접 점 병합 + 직선 정리.
+        corners = Collapse(DedupConsecutive(corners, MinControlPointSpacing));
+
         corners.Reverse(); // SpriteShape edge 가 바깥(위)을 향하도록 winding 반전
         return corners;
+    }
+
+    private const float MinControlPointSpacing = 0.01f;
+
+    // 폐곡선에서 직전 점과 eps 미만으로 붙은 점을 제거한다(순환 처리).
+    private static List<Vector2> DedupConsecutive(List<Vector2> poly, float eps)
+    {
+        int n = poly.Count;
+        if (n == 0) return poly;
+
+        float epsSqr = eps * eps;
+        List<Vector2> outp = new List<Vector2>();
+
+        for (int i = 0; i < n; i++)
+        {
+            Vector2 cur = poly[i];
+            Vector2 prev = outp.Count > 0 ? outp[outp.Count - 1] : poly[n - 1];
+            if ((cur - prev).sqrMagnitude > epsSqr)
+                outp.Add(cur);
+        }
+
+        while (outp.Count > 1 && (outp[0] - outp[outp.Count - 1]).sqrMagnitude <= epsSqr)
+            outp.RemoveAt(outp.Count - 1);
+
+        return outp;
     }
 
     // 격자 정렬 직각 폐곡선의 각 수직 에지를 내부 방향으로 inset 만큼 평행 이동한다.
