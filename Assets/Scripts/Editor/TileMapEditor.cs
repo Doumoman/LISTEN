@@ -163,6 +163,14 @@ public class TileMapEditor : Editor
         if (GUILayout.Button("Rebuild Colliders"))
             RebuildColliders(map);
 
+        EditorGUILayout.Space(4);
+        EditorGUILayout.LabelField("Ground SpriteShape", EditorStyles.boldLabel);
+
+        serializedObject.Update();
+        EditorGUILayout.PropertyField(serializedObject.FindProperty("_groundProfile"), new GUIContent("Ground Profile"));
+        EditorGUILayout.PropertyField(serializedObject.FindProperty("_groundShapeOffset"), new GUIContent("Ground Shape Offset"));
+        serializedObject.ApplyModifiedProperties();
+
         if (GUILayout.Button("Rebuild Ground SpriteShape"))
             map.RebuildGroundSpriteShapes();
 
