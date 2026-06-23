@@ -110,23 +110,35 @@ public static class GroundContourBuilder
 
         List<Vector2> corners = Collapse(pts);
 
-        // 양쪽 끝(최좌측/최우측) 벽을 edgeInset 만큼 안으로 당겨, edge 스프라이트 두께가
-        // 격자 밖으로 튀어나오는 것을 보정한다.
+        // 모든 수직 벽(양끝 + L자/계단 단차의 리저)을 내부를 향해 edgeInset 만큼 당겨,
+        // edge 스프라이트 두께가 격자 밖으로 튀어나오는 것을 보정한다. 윗변/바닥 Y 는 유지.
         if (edgeInset != 0f)
-        {
-            float leftX = minX;
-            float rightX = maxX + 1;
-            for (int i = 0; i < corners.Count; i++)
-            {
-                Vector2 p = corners[i];
-                if (p.x == leftX) p.x = leftX + edgeInset;
-                else if (p.x == rightX) p.x = rightX - edgeInset;
-                corners[i] = p;
-            }
-        }
+            InsetVerticalEdges(corners, edgeInset);
 
         corners.Reverse(); // SpriteShape edge 가 바깥(위)을 향하도록 winding 반전
         return corners;
+    }
+
+    // 격자 정렬 직각 폐곡선의 각 수직 에지를 내부 방향으로 inset 만큼 평행 이동한다.
+    // (각 꼭짓점은 수평 1 + 수직 1 에지를 공유하므로 점마다 정확히 한 번만 갱신된다.)
+    private static void InsetVerticalEdges(List<Vector2> poly, float inset)
+    {
+        int n = poly.Count;
+        for (int i = 0; i < n; i++)
+        {
+            int j = (i + 1) % n;
+            Vector2 a = poly[i];
+            Vector2 b = poly[j];
+
+            if (a.x != b.x) continue; // 수직 에지만
+
+            float sy = Mathf.Sign(b.y - a.y);
+            float nx = a.x - sy * inset; // CCW 폐곡선에서 내부(왼쪽)로 이동
+            a.x = nx;
+            b.x = nx;
+            poly[i] = a;
+            poly[j] = b;
+        }
     }
 
     // 직선으로 이어지는 점 제거(코너만 유지). 폐곡선으로 순환 처리.

@@ -112,6 +112,29 @@ public class GroundContourBuilderTests
     }
 
     [Test]
+    public void BuildTopProfiles_EdgeInset_AppliesToInteriorStepRiser()
+    {
+        // (0,0),(1,0),(1,1): 0열 표면 Y=1, 1열 표면 Y=2 인 계단. depth=2, inset=0.25.
+        // 양끝 벽뿐 아니라 x=1 의 단차 리저도 안으로(오른쪽으로) 당겨져야 한다.
+        var cells = new List<Vector2Int>
+        {
+            new Vector2Int(0, 0), new Vector2Int(1, 0), new Vector2Int(1, 1)
+        };
+
+        List<List<Vector2>> loops = GroundContourBuilder.BuildTopProfiles(cells, 2f, 0.25f);
+
+        Assert.AreEqual(1, loops.Count);
+        CollectionAssert.AreEqual(
+            new[]
+            {
+                new Vector2(0.25f, 1), new Vector2(1.25f, 1),
+                new Vector2(1.25f, 2), new Vector2(1.75f, 2),
+                new Vector2(1.75f, -1), new Vector2(0.25f, -1)
+            },
+            loops[0]);
+    }
+
+    [Test]
     public void BuildTopProfiles_TwoDiagonalGroups_ProduceTwoLoops()
     {
         var cells = new List<Vector2Int> { new Vector2Int(0, 0), new Vector2Int(2, 2) };
