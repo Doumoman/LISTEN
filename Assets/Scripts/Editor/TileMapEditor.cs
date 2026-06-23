@@ -163,6 +163,9 @@ public class TileMapEditor : Editor
         if (GUILayout.Button("Rebuild Colliders"))
             RebuildColliders(map);
 
+        if (GUILayout.Button("Rebuild Ground SpriteShape"))
+            map.RebuildGroundSpriteShapes();
+
         if (GUILayout.Button("Rebuild Fluids"))
             map.RebuildFluids();
 
