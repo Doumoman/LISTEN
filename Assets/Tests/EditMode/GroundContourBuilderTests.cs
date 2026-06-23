@@ -34,7 +34,7 @@ public class GroundContourBuilderTests
         var cells = new List<Vector2Int> { new Vector2Int(0, 0) };
 
         // 표면 Y=1, depth=2 → 바닥 Y=-1
-        List<List<Vector2>> loops = GroundContourBuilder.BuildTopProfiles(cells, 2f);
+        List<List<Vector2>> loops = GroundContourBuilder.BuildTopProfiles(cells, 2f, 0f);
 
         Assert.AreEqual(1, loops.Count);
         // winding 반전: 위 → 아래 순서
@@ -55,7 +55,7 @@ public class GroundContourBuilderTests
             new Vector2Int(0, 0), new Vector2Int(1, 0), new Vector2Int(2, 0)
         };
 
-        List<List<Vector2>> loops = GroundContourBuilder.BuildTopProfiles(cells, 2f);
+        List<List<Vector2>> loops = GroundContourBuilder.BuildTopProfiles(cells, 2f, 0f);
 
         Assert.AreEqual(1, loops.Count);
         // 표면 Y=1, 바닥 Y=-1 인 직사각형(코너 4개로 압축, winding 반전)
@@ -79,7 +79,7 @@ public class GroundContourBuilderTests
             new Vector2Int(0, 0), new Vector2Int(1, 0), new Vector2Int(1, 1)
         };
 
-        List<List<Vector2>> loops = GroundContourBuilder.BuildTopProfiles(cells, 2f);
+        List<List<Vector2>> loops = GroundContourBuilder.BuildTopProfiles(cells, 2f, 0f);
 
         Assert.AreEqual(1, loops.Count);
         // winding 반전 순서
@@ -94,11 +94,29 @@ public class GroundContourBuilderTests
     }
 
     [Test]
+    public void BuildTopProfiles_EdgeInset_PullsEndWallsInward()
+    {
+        var cells = new List<Vector2Int> { new Vector2Int(0, 0) };
+
+        // 표면 Y=1, depth=2 → 바닥 Y=-1, 양끝 X 를 0.25 안으로 당김
+        List<List<Vector2>> loops = GroundContourBuilder.BuildTopProfiles(cells, 2f, 0.25f);
+
+        Assert.AreEqual(1, loops.Count);
+        CollectionAssert.AreEqual(
+            new[]
+            {
+                new Vector2(0.25f, 1), new Vector2(0.75f, 1),
+                new Vector2(0.75f, -1), new Vector2(0.25f, -1)
+            },
+            loops[0]);
+    }
+
+    [Test]
     public void BuildTopProfiles_TwoDiagonalGroups_ProduceTwoLoops()
     {
         var cells = new List<Vector2Int> { new Vector2Int(0, 0), new Vector2Int(2, 2) };
 
-        List<List<Vector2>> loops = GroundContourBuilder.BuildTopProfiles(cells, 2f);
+        List<List<Vector2>> loops = GroundContourBuilder.BuildTopProfiles(cells, 2f, 0f);
 
         Assert.AreEqual(2, loops.Count);
     }

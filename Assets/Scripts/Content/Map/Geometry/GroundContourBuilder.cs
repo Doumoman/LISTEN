@@ -58,17 +58,17 @@ public static class GroundContourBuilder
     /// 아래는 그룹 최저 표면에서 depth 만큼 내린 평평한 자동 바닥.
     /// 각 루프는 격자 모서리 좌표(바닥 Y만 depth 반영)의 CCW 다각형이며 직선 점은 합쳐진다.
     /// </summary>
-    public static List<List<Vector2>> BuildTopProfiles(IReadOnlyCollection<Vector2Int> cells, float depth)
+    public static List<List<Vector2>> BuildTopProfiles(IReadOnlyCollection<Vector2Int> cells, float depth, float edgeInset)
     {
         List<List<Vector2>> result = new List<List<Vector2>>();
 
         foreach (List<Vector2Int> group in GroupConnected(cells))
-            result.Add(BuildTopProfile(group, depth));
+            result.Add(BuildTopProfile(group, depth, edgeInset));
 
         return result;
     }
 
-    private static List<Vector2> BuildTopProfile(List<Vector2Int> group, float depth)
+    private static List<Vector2> BuildTopProfile(List<Vector2Int> group, float depth, float edgeInset)
     {
         int minX = int.MaxValue, maxX = int.MinValue;
         foreach (Vector2Int c in group)
@@ -109,6 +109,22 @@ public static class GroundContourBuilder
         // (minX, topY[minX]) 도달 → 왼쪽 변을 타고 바닥으로 닫힘(Collapse 가 순환 처리)
 
         List<Vector2> corners = Collapse(pts);
+
+        // 양쪽 끝(최좌측/최우측) 벽을 edgeInset 만큼 안으로 당겨, edge 스프라이트 두께가
+        // 격자 밖으로 튀어나오는 것을 보정한다.
+        if (edgeInset != 0f)
+        {
+            float leftX = minX;
+            float rightX = maxX + 1;
+            for (int i = 0; i < corners.Count; i++)
+            {
+                Vector2 p = corners[i];
+                if (p.x == leftX) p.x = leftX + edgeInset;
+                else if (p.x == rightX) p.x = rightX - edgeInset;
+                corners[i] = p;
+            }
+        }
+
         corners.Reverse(); // SpriteShape edge 가 바깥(위)을 향하도록 winding 반전
         return corners;
     }
