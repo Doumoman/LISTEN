@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.U2D;
 
 // 주의: enum 순서는 직렬화 정수값이므로 새 타입은 항상 끝에 추가한다.
 public enum TileType { Ground, Ladder, Pushable, Door, LockedBlock, Water, Lava, MovingPlatform, FallingPlatform, Spike, Gas, Disguised, Fruit, Portal }
@@ -31,6 +32,12 @@ public class TileMapData : MonoBehaviour
 {
     [SerializeField] private List<TileData> _tiles = new List<TileData>();
     [SerializeField] private List<CameraRoomData> _cameraRooms = new List<CameraRoomData>();
+
+    [Header("Ground SpriteShape")]
+    [SerializeField] private SpriteShape _groundProfile;        // 2D Fantasy 번들의 지형 프로필 드래그
+    [SerializeField] private Vector2 _groundShapeOffset = Vector2.zero; // 비주얼-콜라이더 정렬용 전역 오프셋
+    [SerializeField] private float _groundShapeDepth = 3f;      // 윗면 아래로 자동 생성할 흙 몸통 깊이
+    [SerializeField] private float _groundShapeEdgeInset = 0f;  // 양쪽 끝 벽을 안으로 당겨 edge 두께 보정
 
     private const string WaterFluidPrefabPath = "Prefabs/Map/Fluid/WaterFluid";
     private const string LavaFluidPrefabPath = "Prefabs/Map/Fluid/LavaFluid";
@@ -751,6 +758,73 @@ public class TileMapData : MonoBehaviour
     };
 
     /// <summary>
+    /// Ground 타일 그리드에서 경사 없는 닫힌 SpriteShape(시각 전용)를 생성한다.
+    /// 콜라이더는 만들지 않으며(기존 Box+Composite 유지), 멱등하게 재생성한다.
+    /// </summary>
+    public void RebuildGroundSpriteShapes()
+    {
+        DestroyChildByName("GroundShapes");
+
+        if (_groundProfile == null)
+        {
+            Debug.LogWarning("Ground SpriteShape Profile 이 지정되지 않았습니다. TileMapData 인스펙터의 'Ground SpriteShape > Ground Profile' 에 번들 프로필을 드래그하세요.");
+            return;
+        }
+
+        List<Vector2Int> groundCells = new List<Vector2Int>();
+        foreach (TileData tile in _tiles)
+            if (tile.type == TileType.Ground)
+                groundCells.Add(tile.gridPos);
+
+        if (groundCells.Count == 0)
+            return;
+
+        Transform parent = new GameObject("GroundShapes").transform;
+        parent.SetParent(transform, false);
+
+        List<List<Vector2>> loops = GroundContourBuilder.BuildTopProfiles(groundCells, _groundShapeDepth, _groundShapeEdgeInset);
+
+        for (int i = 0; i < loops.Count; i++)
+            CreateGroundShape(parent, loops[i]);
+    }
+
+    private void CreateGroundShape(Transform parent, List<Vector2> loop)
+    {
+        if (loop.Count < 3) return;
+
+        float minX = float.MaxValue, minY = float.MaxValue;
+        foreach (Vector2 p in loop)
+        {
+            if (p.x < minX) minX = p.x;
+            if (p.y < minY) minY = p.y;
+        }
+
+        GameObject go = new GameObject($"GroundShape_{(int)minX}_{(int)minY}");
+        go.transform.SetParent(parent, false);
+        // 스플라인 점은 격자 모서리(콜라이더 기준선)에 두고, 오브젝트만 오프셋만큼 이동 → 비주얼 정렬
+        go.transform.localPosition = new Vector3(_groundShapeOffset.x, _groundShapeOffset.y, 0f);
+
+        SpriteShapeController ctrl = go.AddComponent<SpriteShapeController>();
+        ctrl.spriteShape = _groundProfile;
+        ctrl.autoUpdateCollider = false; // 시각 전용 — 콜라이더 생성 안 함
+
+        Spline spline = ctrl.spline;
+        spline.Clear();
+        for (int i = 0; i < loop.Count; i++)
+        {
+            spline.InsertPointAt(i, new Vector3(loop[i].x, loop[i].y, 0f));
+            spline.SetTangentMode(i, ShapeTangentMode.Linear); // 직선 → 경사/곡선 0
+        }
+        spline.isOpenEnded = false; // 닫힌 윤곽
+
+        SpriteShapeRenderer ssr = go.GetComponent<SpriteShapeRenderer>();
+        if (ssr != null)
+            ssr.sortingOrder = 6; // 기존 Ground 사각 비주얼(5)보다 위
+
+        ctrl.RefreshSpriteShape();
+    }
+
+    /// <summary>
     /// 타일 데이터를 기반으로 콜라이더 + 가시 스프라이트 + 기믹 컴포넌트를 모두 생성한다.
     /// 새 데모 씬을 코드로 구성할 때 사용. 멱등(여러 번 호출해도 안전).
     /// </summary>
@@ -799,6 +873,8 @@ public class TileMapData : MonoBehaviour
             else if (tile.type == TileType.FallingPlatform)
                 CreateFallingPlatform(tile.gridPos, tile.colliderSize);
         }
+
+        RebuildGroundSpriteShapes();
     }
 
     private void ClearBuiltChildren()
@@ -810,6 +886,7 @@ public class TileMapData : MonoBehaviour
         DestroyChildByName("DynamicFluids");
         DestroyChildByName("MovingPlatforms");
         DestroyChildByName("FallingPlatforms");
+        DestroyChildByName("GroundShapes");
     }
 
     private void DestroyChildByName(string childName)
@@ -845,7 +922,9 @@ public class TileMapData : MonoBehaviour
             box.compositeOperation = Collider2D.CompositeOperation.Merge;
 
         // 사다리/유체 트리거는 부모 이름 기반 감지(PlayerFSM.IsNamedFluid)와 호환되도록 이름 유지
-        AddTileVisual(go, tile.colliderSize, Colors[tile.type], 5);
+        // 프로필이 지정돼 있으면 Ground 시각은 SpriteShape 가 담당 → 사각 비주얼 생략(콜라이더는 유지)
+        if (!(isGround && _groundProfile != null))
+            AddTileVisual(go, tile.colliderSize, Colors[tile.type], 5);
     }
 
     private void BuildSpike(TileData tile)

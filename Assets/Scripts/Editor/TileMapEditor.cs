@@ -163,6 +163,19 @@ public class TileMapEditor : Editor
         if (GUILayout.Button("Rebuild Colliders"))
             RebuildColliders(map);
 
+        EditorGUILayout.Space(4);
+        EditorGUILayout.LabelField("Ground SpriteShape", EditorStyles.boldLabel);
+
+        serializedObject.Update();
+        EditorGUILayout.PropertyField(serializedObject.FindProperty("_groundProfile"), new GUIContent("Ground Profile"));
+        EditorGUILayout.PropertyField(serializedObject.FindProperty("_groundShapeOffset"), new GUIContent("Ground Shape Offset"));
+        EditorGUILayout.PropertyField(serializedObject.FindProperty("_groundShapeDepth"), new GUIContent("Ground Shape Depth"));
+        EditorGUILayout.PropertyField(serializedObject.FindProperty("_groundShapeEdgeInset"), new GUIContent("Ground Shape Edge Inset"));
+        serializedObject.ApplyModifiedProperties();
+
+        if (GUILayout.Button("Rebuild Ground SpriteShape"))
+            map.RebuildGroundSpriteShapes();
+
         if (GUILayout.Button("Rebuild Fluids"))
             map.RebuildFluids();
 
